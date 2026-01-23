@@ -1,31 +1,40 @@
-<img src="https://cloud.githubusercontent.com/assets/2762250/7824984/985c3e76-03bc-11e5-807b-1402bde4fe56.png" width="400">
+<img src="dodge-logo.png" width="400">
 
 ## Overview
 
-dash.js is a JavaScript based implementation for the playback of MPEG DASH content in browser based
-environments that support the [Media Source Extensions](https://w3c.github.io/media-source/) and
-the [Encrypted Media Extensions](https://www.w3.org/TR/encrypted-media/).
+This repository contains an implementation of Dodge, a client-side framework for application-layer video fingerprinting defenses. Dodge introduces a generalization of DASH streaming, replacing video segment downloads with customizable *cycles* that are specified in a JSON *extended manifest*. In other words, Dodge supports different types of traffic analysis defenses, based on modifying the request-response sequences of video traffic, that can be provided to the video player as a JSON file.
+
+With Dodge, we provide not only a testbed for traffic analysis defenses but also a practical tool that enables defended video playback without any special requirements on servers or network infrastructure. Video servers themselves could distribute defenses in the form of extended manifests (and this may be an important use case); but defenses could also be distributed by a trusted third party or in community repositories, similar to AdBlock lists. You could even create defenses yourself and start watching now!
+
+Dodge is implemented as a fork of dash.js, a JavaScript implementation for the playback of MPEG-DASH content in browser-based
+environments that support the [Media Source Extensions](https://w3c.github.io/media-source/) and [Encrypted Media Extensions](https://www.w3.org/TR/encrypted-media/).
 
 ## Documentation
 
-To get started, check out our [documentation](https://dashif.org/dash.js/) that includes
-a [quickstart guide](https://dashif.org/dash.js/pages/quickstart/index.html) , [usage instructions](https://dashif.org/dash.js/pages/usage/index.html)
+See the paper "Dodge: A Client-Side Framework for Application-Layer Video Fingerprinting Defenses" in PoPETS 2026 for further details on the Dodge framework, defense design, and a proof-of-concept defense used for evaluation. If you want to do research or development related to Dodge, feel free to contact us!
+
+To get started with dash.js development in general, check out their [documentation](https://dashif.org/dash.js/) that includes
+a [quickstart guide](https://dashif.org/dash.js/pages/quickstart/index.html), [usage instructions](https://dashif.org/dash.js/pages/usage/index.html),
 and [contribution guidelines](https://dashif.org/dash.js/pages/developers/how-to-contribute.html).
 
 ## Hosted Examples
+
+TODO - add demo link, these are vanilla dash.js
 
 * [Reference Player](https://reference.dashif.org/dash.js/latest/samples/dash-if-reference-player/index.html)
 * [Samples](https://reference.dashif.org/dash.js/latest/samples/index.html)
 
 ## Quickstart
 
-A very basic example on how to use dash.js in your application can be found below:
+TODO - add demo extended manifest and test this
+
+A basic example of how to use Dodge in your application can be found below:
 
 ```html
 <!doctype html>
 <html>
 <head>
-    <title>dash.js Rocks</title>
+    <title>Dodge Rocks</title>
     <style>
         video {
             width: 640px;
@@ -51,17 +60,15 @@ A very basic example on how to use dash.js in your application can be found belo
 
 ## Contact
 
-Please raise any issue directly on [Github](https://github.com/Dash-Industry-Forum/dash.js/issues).
+TODO - test all links
 
-You can also find us on [Slack!](https://join.slack.com/t/dashif/shared_invite/zt-egme869x-JH~UPUuLoKJB26fw7wj3Gg) and
-on [Google Groups](https://groups.google.com/g/dashjs).
+Please raise any issue specific to Dodge directly on our [GitHub issue page](https://github.com/trafnex/dodge-framework/issues).
+
+Please raise any issue related to dash.js in general directly on their [GitHub issue page](https://github.com/Dash-Industry-Forum/dash.js/issues). You can also find dash.js developers/maintainers on [Slack!](https://join.slack.com/t/dashif/shared_invite/zt-egme869x-JH~UPUuLoKJB26fw7wj3Gg) and
+[Google Groups](https://groups.google.com/g/dashjs).
 
 ## License
 
-dash.js is released under [BSD license](https://github.com/Dash-Industry-Forum/dash.js/blob/development/LICENSE.md)
+dash.js is released under a BSD License; see the [LICENSE file](https://github.com/trafnex/dodge-framework/blob/master/LICENSE.md) in this repository.
 
-## Tested With
-
-[<img src="https://cloud.githubusercontent.com/assets/7864462/12837037/452a17c6-cb73-11e5-9f39-fc96893bc9bf.png" alt="Browser Stack Logo" width="300">](https://www.browserstack.com/)
-&nbsp;&nbsp;
-[<img src="https://www.lambdatest.com/support/img/logo.svg" alt="Lambdatest Logo" width="300">](https://www.lambdatest.com/)
+All contributions, additions, and changes to dash.js (the implementation of Dodge) found in this repository are available under the BSD 3-Clause License. See the [NOTICE file](https://github.com/trafnex/dodge-framework/blob/master/NOTICE.md) for further details.

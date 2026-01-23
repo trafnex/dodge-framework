@@ -953,6 +953,20 @@ function MediaPlayer() {
     }
 
     /**
+     * Time since stream end in seconds, for trailing cycles.
+     * @returns {number} The time since stream end in seconds
+     * @throws {@link module:MediaPlayer~PLAYBACK_NOT_INITIALIZED_ERROR PLAYBACK_NOT_INITIALIZED_ERROR} if called before initializePlayback function
+     * @memberof module:MediaPlayer
+     * @instance
+     */
+    function timeSinceEnd() {
+        if (!playbackInitialized) {
+            throw PLAYBACK_NOT_INITIALIZED_ERROR;
+        }
+        return playbackController.getTimeSinceStreamEnd();
+    }
+
+    /**
      * Returns the current playhead time relative to the start of the DVR window.
      * For VoD this method returns the same value as time()
      * @returns {number} The current playhead time of the media relative to the start of the DVR window
@@ -2878,6 +2892,7 @@ function MediaPlayer() {
         time,
         timeAsUTC,
         timeInDvrWindow,
+        timeSinceEnd,
         trigger,
         triggerSteeringRequest,
         unregisterCustomCapabilitiesFilter,

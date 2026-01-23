@@ -55,21 +55,18 @@ import Events from './events/Events.js';
  * // Full settings object
  * settings = {
  *        debug: {
- *            logLevel: Debug.LOG_LEVEL_WARNING,
- *            dispatchEvent: false
+ *            logLevel: Debug.LOG_LEVEL_DEBUG,
+ *            dispatchEvent: true
  *        },
  *        streaming: {
  *            abandonLoadTimeout: 10000,
  *            wallclockTimeUpdateInterval: 100,
  *            manifestUpdateRetryInterval: 100,
  *            liveUpdateTimeThresholdInMilliseconds: 0,
- *            cacheInitSegments: false,
  *            applyServiceDescription: true,
  *            applyProducerReferenceTime: true,
  *            applyContentSteering: true,
  *            enableManifestDurationMismatchFix: true,
- *            parseInbandPrft: false,
- *            enableManifestTimescaleMismatchFix: false,
  *            capabilities: {
  *               filterUnsupportedEssentialProperties: true,
  *               supportedEssentialProperties: [
@@ -274,7 +271,7 @@ import Events from './events/Events.js';
  *                     sampleSettings: {
  *                         live: 3,
  *                         vod: 4,
- *                         enableSampleSizeAdjustment: true,
+ *                         enableSampleSizeAdjustment: false,
  *                         decreaseScale: 0.7,
  *                         increaseScale: 1.3,
  *                         maxMeasurementsToKeep: 20,
@@ -328,6 +325,15 @@ import Events from './events/Events.js';
  *                audioChannelConfiguration: 'urn:mpeg:mpegB:cicp:ChannelConfiguration',
  *                role: 'urn:mpeg:dash:role:2011',
  *                accessibility: 'urn:mpeg:dash:role:2011'
+ *            },
+ *            dodge: {
+ *                queryParam: 'padding',
+ *                paddingHeader: 'hdntl',
+ *                paddingLength: 512,
+ *                paddingRandomness: 256,
+ *                checkInterval: 100,
+ *                randomnessMax: 50,
+ *                maxIdLength: 16
  *            }
  *          },
  *          errors: {
@@ -471,7 +477,7 @@ import Events from './events/Events.js';
 
 /**
  * @typedef {Object} DebugSettings
- * @property {number} [logLevel=dashjs.Debug.LOG_LEVEL_WARNING]
+ * @property {number} [logLevel=dashjs.Debug.LOG_LEVEL_DEBUG]
  * Sets up the log level. The levels are cumulative.
  *
  * For example, if you set the log level to dashjs.Debug.LOG_LEVEL_WARNING all warnings, errors and fatals will be logged.
@@ -496,7 +502,7 @@ import Events from './events/Events.js';
  *
  * - dashjs.Debug.LOG_LEVEL_DEBUG
  * Log debug messages.
- * @property {boolean} [dispatchEvent=false]
+ * @property {boolean} [dispatchEvent=true]
  * Enable to trigger a Events.LOG event whenever log output is generated.
  *
  * Note this will be dispatched regardless of log level.
@@ -852,7 +858,7 @@ import Events from './events/Events.js';
  * Standard ABR throughput rules multiply the throughput by this value.
  *
  * It should be between 0 and 1, with lower values giving less rebuffering (but also lower quality)
- * @property {object} [sampleSettings = {live=3,vod=4,enableSampleSizeAdjustment=true,decreaseScale=0.7,increaseScale=1.3,maxMeasurementsToKeep=20,averageLatencySampleAmount=4}]
+ * @property {object} [sampleSettings = {live=3,vod=4,enableSampleSizeAdjustment=false,decreaseScale=0.7,increaseScale=1.3,maxMeasurementsToKeep=20,averageLatencySampleAmount=4}]
  * When deriving the throughput based on the arithmetic or harmonic mean these settings define:
  * - `live`: Number of throughput samples to use (sample size) for live streams
  * - `vod`: Number of throughput samples to use (sample size) for VoD streams
@@ -911,6 +917,24 @@ import Events from './events/Events.js';
  */
 
 /**
+ * @typedef {Object} DodgeSettings
+ * @property {string} [queryParam="padding"]
+ * Query parameter to use for cache busting.
+ * @property {string} [paddingHeader="hdntl"]
+ * The HTTP header to use for request padding.
+ * @property {number} [paddingLength=512]
+ * The length, in bytes, all requests should be padded to.
+ * @property {number} [paddingRandomness=256]
+ * If specified, add up to this number of bytes as additional request padding.
+ * @property {number} [checkInterval=100]
+ * How often to check if the buffer is done being updated.
+ * @property {number} [randomnessMax=50]
+ * Maximum random (additional) time to wait to next cycle.
+ * @property {number} [maxIdLength=16]
+ * Maximum number of characters in a representation ID.
+ */
+
+/**
  * @typedef {Object} module:Settings~CmsdSettings
  * @property {boolean} [enabled=false]
  * Enable or disable the CMSD response headers parsing.
@@ -944,8 +968,6 @@ import Events from './events/Events.js';
  * For live streams, set the interval-frequency in milliseconds at which dash.js will check if the current manifest is still processed before downloading the next manifest once the minimumUpdatePeriod time has.
  * @property {number} [liveUpdateTimeThresholdInMilliseconds=0]
  * For live streams, postpone syncing time updates until the threshold is passed. Increase if problems occurs during live streams on low end devices.
- * @property {boolean} [cacheInitSegments=false]
- * Enables the caching of init segments to avoid requesting the init segments before each representation switch.
  * @property {boolean} [applyServiceDescription=true]
  * Set to true if dash.js should use the parameters defined in ServiceDescription elements
  * @property {boolean} [applyProducerReferenceTime=true]
@@ -953,11 +975,7 @@ import Events from './events/Events.js';
  * @property {boolean} [applyContentSteering=true]
  * Set to true if dash.js should apply content steering during playback.
  * @property {boolean} [enableManifestDurationMismatchFix=true]
- * Overwrite the manifest segments base information timescale attributes with the timescale set in initialization segments
- * @property {boolean} [enableManifestTimescaleMismatchFix=false]
  * Defines the delay in milliseconds between two consecutive checks for events to be fired.
- * @property {boolean} [parseInbandPrft=false]
- * Set to true if dash.js should parse inband prft boxes (ProducerReferenceTime) and trigger events.
  * @property {module:Settings~Metrics} metrics Metric settings
  * @property {module:Settings~LiveDelay} delay Live Delay settings
  * @property {module:Settings~EventSettings} events Event settings
@@ -1043,6 +1061,8 @@ import Events from './events/Events.js';
  * @property {module:Settings~defaultSchemeIdUri} defaultSchemeIdUri
  * Default schemeIdUri for descriptor type elements
  * These strings are used when not provided with setInitialMediaSettingsFor()
+ * @property {module:Settings~DodgeSettings} dodge
+ * Settings related to the Dodge framework.
  */
 
 
@@ -1080,21 +1100,18 @@ function Settings() {
      */
     const defaultSettings = {
         debug: {
-            logLevel: Debug.LOG_LEVEL_WARNING,
-            dispatchEvent: false
+            logLevel: Debug.LOG_LEVEL_DEBUG,
+            dispatchEvent: true
         },
         streaming: {
             abandonLoadTimeout: 10000,
             wallclockTimeUpdateInterval: 100,
             manifestUpdateRetryInterval: 100,
             liveUpdateTimeThresholdInMilliseconds: 0,
-            cacheInitSegments: false,
             applyServiceDescription: true,
             applyProducerReferenceTime: true,
             applyContentSteering: true,
             enableManifestDurationMismatchFix: true,
-            parseInbandPrft: false,
-            enableManifestTimescaleMismatchFix: false,
             capabilities: {
                 filterUnsupportedEssentialProperties: true,
                 supportedEssentialProperties: [
@@ -1266,14 +1283,14 @@ function Settings() {
                         active: true
                     },
                     insufficientBufferRule: {
-                        active: true,
+                        active: false,
                         parameters: {
                             throughputSafetyFactor: 0.7,
                             segmentIgnoreCount: 2
                         }
                     },
                     switchHistoryRule: {
-                        active: true,
+                        active: false,
                         parameters: {
                             sampleSize: 8,
                             switchPercentageThreshold: 0.075
@@ -1287,7 +1304,7 @@ function Settings() {
                         }
                     },
                     abandonRequestsRule: {
-                        active: true,
+                        active: false,
                         parameters: {
                             abandonDurationMultiplier: 1.8,
                             minSegmentDownloadTimeThresholdInMs: 500,
@@ -1314,11 +1331,11 @@ function Settings() {
                     sampleSettings: {
                         live: 3,
                         vod: 4,
-                        enableSampleSizeAdjustment: true,
+                        enableSampleSizeAdjustment: false,
                         decreaseScale: 0.7,
                         increaseScale: 1.3,
                         maxMeasurementsToKeep: 20,
-                        averageLatencySampleAmount: 4,
+                        averageLatencySampleAmount: 40,
                     },
                     ewma: {
                         throughputSlowHalfLifeSeconds: 8,
@@ -1369,6 +1386,15 @@ function Settings() {
                 audioChannelConfiguration: 'urn:mpeg:mpegB:cicp:ChannelConfiguration',
                 role: 'urn:mpeg:dash:role:2011',
                 accessibility: 'urn:mpeg:dash:role:2011'
+            },
+            dodge: {
+                queryParam: 'padding',
+                paddingHeader: 'hdntl',
+                paddingLength: 512,
+                paddingRandomness: 256,
+                checkInterval: 100,
+                randomnessMax: 50,
+                maxIdLength: 16,
             }
         },
         errors: {

@@ -42,6 +42,7 @@ function ScheduleController(config) {
     config = config || {};
     const context = this.context;
     const eventBus = EventBus(context).getInstance();
+    const dashHandler = config.dashHandler;
     const dashMetrics = config.dashMetrics;
     const mediaPlayerModel = config.mediaPlayerModel;
     const fragmentModel = config.fragmentModel;
@@ -100,7 +101,6 @@ function ScheduleController(config) {
     }
 
     function startScheduleTimer(value) {
-
         //return if both buffering and playback have ended
         if (bufferController.getIsBufferingCompleted()) {
             return;
@@ -123,6 +123,8 @@ function ScheduleController(config) {
      */
     function schedule() {
         try {
+            bufferController.updateBufferLevel();
+            
             // Check if we are supposed to stop scheduling
             if (_shouldClearScheduleTimer()) {
                 clearScheduleTimer();
@@ -154,9 +156,10 @@ function ScheduleController(config) {
      */
     function _getNextFragment() {
         const currentRepresentation = representationController.getCurrentRepresentation();
+        const remainingInitCycles = dashHandler.getRemainingInitCycles();
 
-        // A quality changed occured or we are switching the AdaptationSet. In that case we need to load a new init segment
-        if (initSegmentRequired || currentRepresentation.id !== lastInitializedRepresentationId || switchTrack) {
+        // A quality changed occurred or we are switching the AdaptationSet. In that case we need to load a new init segment
+        if (remainingInitCycles && (initSegmentRequired || currentRepresentation.id !== lastInitializedRepresentationId || switchTrack)) {
             if (switchTrack) {
                 logger.debug('Switch track for ' + type + ', representation id = ' + currentRepresentation.id);
                 switchTrack = false;
@@ -169,6 +172,9 @@ function ScheduleController(config) {
             );
             checkPlaybackQuality = false;
             initSegmentRequired = false;
+            if (remainingInitCycles == 1) {
+                setLastInitializedRepresentationId(currentRepresentation.id);
+            }
         }
 
         // Request a media segment instead
@@ -191,7 +197,7 @@ function ScheduleController(config) {
     function _shouldClearScheduleTimer() {
         try {
             return (((type === Constants.TEXT) && !textController.isTextEnabled()) ||
-                (playbackController.isPaused() && (!playbackController.getStreamController().getInitialPlayback() || !playbackController.getStreamController().getAutoPlay()) && !settings.get().streaming.scheduling.scheduleWhilePaused));
+                (playbackController.isPaused() && (!playbackController.getStreamController().getInitialPlayback() || !playbackController.getStreamController().getAutoPlay()) && !settings.get().streaming.scheduling.scheduleWhilePaused && !dashHandler.getIsTrailing()));
         } catch (e) {
             return false;
         }

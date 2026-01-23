@@ -46,7 +46,7 @@ const APPEND_WINDOW_END_OFFSET = 0.01;
  * @implements FragmentSink
  */
 
-const CHECK_INTERVAL = 50;
+const CHECK_INTERVAL = 25;
 
 function SourceBufferSink(config) {
     const context = this.context;
@@ -66,6 +66,10 @@ function SourceBufferSink(config) {
     let isAppendingInProgress = false;
     let mediaSource = config.mediaSource;
     let lastRequestAppended = null;
+    // Measure the total buffer level each time it is updated. Used to
+    // determine the precise amount of time each segment contributes to the
+    // buffer, for more precise scheduling and better defenses.
+    let measurementTrace = [0.0];
 
     function setup() {
         logger = Debug(context).getInstance().getLogger(instance);
@@ -256,6 +260,7 @@ function SourceBufferSink(config) {
             buffer = null;
         }
         lastRequestAppended = null;
+        measurementTrace = [0.0];
     }
 
     function getBuffer() {
@@ -271,6 +276,27 @@ function SourceBufferSink(config) {
         }
     }
 
+    function getTotalBufferedTime() {
+        try {
+            const ranges = getAllBufferRanges();
+            let totalBufferedTime = 0;
+            let ln,
+                i;
+
+            if (!ranges) {
+                return totalBufferedTime;
+            }
+
+            for (i = 0, ln = ranges.length; i < ln; i++) {
+                totalBufferedTime += ranges.end(i) - ranges.start(i);
+            }
+
+            return totalBufferedTime;
+        } catch (e) {
+            return 0;
+        }
+    }
+
     function append(chunk, request = null) {
         return new Promise((resolve, reject) => {
             if (!chunk) {
@@ -280,7 +306,7 @@ function SourceBufferSink(config) {
                 });
                 return;
             }
-            appendQueue.push({ data: chunk, promise: { resolve, reject }, request });
+            appendQueue.push({ data: chunk, traceIndex: measurementTrace.length - 1, promise: { resolve, reject }, request });
             _waitForUpdateEnd(_appendNextInQueue.bind(this));
         });
     }
@@ -361,7 +387,7 @@ function SourceBufferSink(config) {
                 if (nextChunk && nextChunk.data && nextChunk.data.segmentType && nextChunk.data.segmentType !== HTTPRequest.INIT_SEGMENT_TYPE) {
                     delete nextChunk.data.bytes;
                 }
-                nextChunk.promise.resolve({ chunk: nextChunk.data });
+                nextChunk.promise.resolve({ chunk: nextChunk.data, trace: measurementTrace.slice(nextChunk.traceIndex) });
             };
 
             try {
@@ -439,6 +465,7 @@ function SourceBufferSink(config) {
         if (buffer.updating) {
             return;
         }
+        measurementTrace.push(getTotalBufferedTime());
 
         // updating is completed, now we can stop checking and resolve the promise
         _executeCallback();
@@ -472,6 +499,7 @@ function SourceBufferSink(config) {
         append,
         changeType,
         getAllBufferRanges,
+        getTotalBufferedTime,
         getBuffer,
         getType,
         initializeForFirstUse,

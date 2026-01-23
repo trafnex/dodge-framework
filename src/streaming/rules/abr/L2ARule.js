@@ -67,7 +67,7 @@ function L2ARule(config) {
         _resetInitialSettings();
 
         eventBus.on(Events.PLAYBACK_SEEKING, _onPlaybackSeeking, instance);
-        eventBus.on(Events.MEDIA_FRAGMENT_LOADED, _onMediaFragmentLoaded, instance);
+        //eventBus.on(Events.MEDIA_FRAGMENT_LOADED, _onMediaFragmentLoaded, instance);
         eventBus.on(Events.METRIC_ADDED, _onMetricAdded, instance);
     }
 
@@ -166,7 +166,7 @@ function L2ARule(config) {
      * @param {object} e
      * @private
      */
-    function _onMediaFragmentLoaded(e) {
+    /* function _onMediaFragmentLoaded(e) {
         if (e && e.chunk && e.chunk.representation && e.chunk.representation.mediaInfo) {
             const l2AState = l2AStateDict[e.chunk.representation.mediaInfo.type];
             const l2AParameters = l2AParameterDict[e.chunk.representation.mediaInfo.type];
@@ -187,7 +187,7 @@ function L2ARule(config) {
                 _checkNewSegment(l2AState, l2AParameters);
             }
         }
-    }
+    } */
 
     /**
      * Event handler for the metricAdded event
@@ -483,7 +483,7 @@ function L2ARule(config) {
     function reset() {
         _resetInitialSettings();
         eventBus.off(Events.PLAYBACK_SEEKING, _onPlaybackSeeking, instance);
-        eventBus.off(Events.MEDIA_FRAGMENT_LOADED, _onMediaFragmentLoaded, instance);
+        //eventBus.off(Events.MEDIA_FRAGMENT_LOADED, _onMediaFragmentLoaded, instance);
         eventBus.off(Events.METRIC_ADDED, _onMetricAdded, instance);
     }
 

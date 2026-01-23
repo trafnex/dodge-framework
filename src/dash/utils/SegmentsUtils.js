@@ -54,6 +54,79 @@ export function replaceIDForTemplate(url, value) {
     return url.split('$RepresentationID$').join(v);
 }
 
+export function countUnpaddedTokenOccurrences(url, token) {
+    const formatTag = '%0';
+
+    let found = 0;
+
+    let startPos,
+        endPos,
+        formatTagPos,
+        specifier;
+
+    const tokenLen = token.length;
+
+    if (!url) {
+        return found;
+    }
+
+    // keep looping round until all instances of <token> have been
+    // replaced. once that has happened, startPos below will be -1
+    // and the completed url will be returned.
+    while (true) {
+
+        // check if there is a valid $<token>...$ identifier
+        // if not, return the url as is.
+        startPos = url.indexOf('$' + token);
+        if (startPos < 0) {
+            return found;
+        }
+
+        // the next '$' must be the end of the identifier
+        // if there isn't one, return the url as is.
+        endPos = url.indexOf('$', startPos + tokenLen);
+        if (endPos < 0) {
+            return found;
+        }
+
+        // now see if there is an additional format tag suffixed to
+        // the identifier within the enclosing '$' characters
+        formatTagPos = url.indexOf(formatTag, startPos + tokenLen);
+        if (formatTagPos > startPos && formatTagPos < endPos) {
+
+            specifier = url.charAt(endPos - 1);
+
+            // support the minimum specifiers required by IEEE 1003.1
+            // (d, i , o, u, x, and X) for completeness
+            switch (specifier) {
+                // treat all int types as uint,
+                // hence deliberate fallthrough
+                case 'd':
+                case 'i':
+                case 'u':
+                    //paddedValue = zeroPadToLength(value.toString(), width);
+                    break;
+                case 'x':
+                    //paddedValue = zeroPadToLength(value.toString(16), width);
+                    break;
+                case 'X':
+                    //paddedValue = zeroPadToLength(value.toString(16), width).toUpperCase();
+                    break;
+                case 'o':
+                    //paddedValue = zeroPadToLength(value.toString(8), width);
+                    break;
+                default:
+                    return found;
+            }
+        } else {
+            //paddedValue = value;
+            found += 1;
+        }
+
+        url = url.substring(0, startPos) + url.substring(endPos + 1);
+    }
+}
+
 export function replaceTokenForTemplate(url, token, value) {
     const formatTag = '%0';
 
@@ -223,9 +296,15 @@ export function getTimeBasedSegment(timelineConverter, isDynamic, representation
 
     seg.replacementTime = tManifest ? tManifest : time;
 
+    let replacements = {
+        'Number': countUnpaddedTokenOccurrences(url, 'Number'),
+        'Time': countUnpaddedTokenOccurrences(url, 'Time'),
+    }
+
     url = replaceTokenForTemplate(url, 'Number', seg.replacementNumber);
     url = replaceTokenForTemplate(url, 'Time', seg.replacementTime);
     seg.media = url;
+    seg.replacements = replacements;
     seg.mediaRange = range;
 
     return seg;

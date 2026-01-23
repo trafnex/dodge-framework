@@ -41,6 +41,7 @@ import Events from '../core/events/Events.js';
 import Errors from '../core/errors/Errors.js';
 import FactoryMaker from '../core/FactoryMaker.js';
 import DashParser from '../dash/parser/DashParser.js';
+import DefenseController from './controllers/DefenseController.js'
 
 function ManifestLoader(config) {
 
@@ -50,6 +51,7 @@ function ManifestLoader(config) {
     const settings = config.settings;
     const eventBus = EventBus(context).getInstance();
     const urlUtils = URLUtils(context).getInstance();
+    const defenseController = DefenseController(context).getInstance();
 
     let instance,
         logger,
@@ -107,18 +109,10 @@ function ManifestLoader(config) {
         }
     }
 
-    function load(url, serviceLocation = null, queryParams = null) {
+    function load(url) {
 
         const requestStartDate = new Date();
-        const request = new TextRequest(url, HTTPRequest.MPD_TYPE);
-
-        if (serviceLocation) {
-            request.serviceLocation = serviceLocation;
-        }
-
-        if (queryParams) {
-            request.queryParams = queryParams;
-        }
+        const request = new TextRequest(url, HTTPRequest.GET);
 
         if (!request.startDate) {
             request.startDate = requestStartDate;
@@ -132,30 +126,10 @@ function ManifestLoader(config) {
 
         urlLoader.load({
             request: request,
-            success: function (data, textStatus, responseURL) {
+            success: function (bytes, textStatus) {
                 // Manage situations in which success is called after calling reset
                 if (!xlinkController) {
                     return;
-                }
-
-                let actualUrl,
-                    baseUri,
-                    manifest;
-
-                // Handle redirects for the MPD - as per RFC3986 Section 5.1.3
-                // also handily resolves relative MPD URLs to absolute
-                if (responseURL && responseURL !== url) {
-                    baseUri = urlUtils.parseBaseUrl(responseURL);
-                    actualUrl = responseURL;
-                } else {
-                    // usually this case will be caught and resolved by
-                    // responseURL above but it is not available for IE11 and Edge/12 and Edge/13
-                    // baseUri must be absolute for BaseURL resolution later
-                    if (urlUtils.isRelative(url)) {
-                        url = urlUtils.resolve(url, window.location.href);
-                    }
-
-                    baseUri = urlUtils.parseBaseUrl(url);
                 }
 
                 // A response of no content implies in-memory is properly up to date
@@ -168,9 +142,20 @@ function ManifestLoader(config) {
                     return;
                 }
 
+                // Parse and validate the received extended manifest, extract the MPD
+                const extended = JSON.parse(bytes);
+                if (!defenseController.addExtendedManifest(extended)) {
+                    logger.debug('Failed to download extended manifest, rejected');
+                    return;
+                }
+                
+                let manifest;
+                let contents = extended['start']['mpd'];
+                let baseUri = extended['start']['base_uri'];
+
                 // Create parser according to manifest type
                 if (parser === null) {
-                    parser = createParser(data);
+                    parser = createParser(contents);
                 }
 
                 if (parser === null) {
@@ -188,7 +173,7 @@ function ManifestLoader(config) {
                 xlinkController.setParser(parser);
 
                 try {
-                    manifest = parser.parse(data);
+                    manifest = parser.parse(contents);
                 } catch (e) {
                     eventBus.trigger(Events.INTERNAL_MANIFEST_LOADED, {
                         manifest: null,
@@ -201,9 +186,14 @@ function ManifestLoader(config) {
                 }
 
                 if (manifest) {
-                    manifest.url = actualUrl || url;
-
                     // URL from which the MPD was originally retrieved (MPD updates will not change this value)
+                    if (!manifest.url) {
+                        const newUrl = `${baseUri}static.mpd`; // TODO production
+                        logger.debug('Setting manifest URL to ' + newUrl);
+                        manifest.url = newUrl;
+                    } else {
+                        logger.debug('Manifest URL is ' + manifest.url);
+                    }
                     if (!manifest.originalUrl) {
                         manifest.originalUrl = manifest.url;
                     }
@@ -222,11 +212,12 @@ function ManifestLoader(config) {
                         }
                     }
 
-                    manifest.baseUri = baseUri;
+                    manifest.baseUri = urlUtils.parseBaseUrl(baseUri);
+                    logger.debug('Manifest base URI set to ' + manifest.baseUri);
                     manifest.loadedTime = new Date();
                     xlinkController.resolveManifestOnLoad(manifest);
 
-                    eventBus.trigger(Events.ORIGINAL_MANIFEST_LOADED, { originalManifest: data });
+                    eventBus.trigger(Events.ORIGINAL_MANIFEST_LOADED, { originalManifest: contents });
                 } else {
                     eventBus.trigger(Events.INTERNAL_MANIFEST_LOADED, {
                         manifest: null,
@@ -245,6 +236,7 @@ function ManifestLoader(config) {
                         Errors.MANIFEST_LOADER_LOADING_FAILURE_ERROR_MESSAGE + `${url}, ${errorText}`
                     )
                 });
+                logger.debug('Failed to download extended manifest, ' + errorText);
             }
         });
     }

@@ -60,7 +60,6 @@ function CmcdModel() {
         playbackController,
         serviceDescriptionController,
         throughputController,
-        streamProcessors,
         _lastMediaTypeRequest,
         _isStartup,
         _bufferLevelStarved,
@@ -84,7 +83,6 @@ function CmcdModel() {
         eventBus.on(MediaPlayerEvents.MANIFEST_LOADED, _onManifestLoaded, instance);
         eventBus.on(MediaPlayerEvents.BUFFER_LEVEL_STATE_CHANGED, _onBufferLevelStateChanged, instance);
         eventBus.on(MediaPlayerEvents.PLAYBACK_SEEKED, _onPlaybackSeeked, instance);
-        eventBus.on(MediaPlayerEvents.PERIOD_SWITCH_COMPLETED, _onPeriodSwitchComplete, instance);
         if (autoPlay) {
             eventBus.on(MediaPlayerEvents.MANIFEST_LOADING_STARTED, _onPlaybackStarted, instance);
         }
@@ -135,11 +133,6 @@ function CmcdModel() {
         _lastMediaTypeRequest = undefined;
         _playbackStartedTime = undefined;
         _msdSent = false;
-        _updateStreamProcessors();
-    }
-
-    function _onPeriodSwitchComplete() {
-        _updateStreamProcessors();
     }
 
     function _onPlaybackStarted() {
@@ -154,24 +147,6 @@ function CmcdModel() {
         }
 
         internalData.msd = Date.now() - _playbackStartedTime;
-    }
-
-    function _updateStreamProcessors() {
-        if (!playbackController) {
-            return;
-        }
-        const streamController = playbackController.getStreamController();
-        if (!streamController) {
-            return;
-        }
-        if (typeof streamController.getActiveStream !== 'function') {
-            return;
-        }
-        const activeStream = streamController.getActiveStream();
-        if (!activeStream) {
-            return;
-        }
-        streamProcessors = activeStream.getStreamProcessors();
     }
 
     function getQueryParameter(request) {
@@ -406,8 +381,6 @@ function CmcdModel() {
         const tb = _getTopBitrateByType(request.representation?.mediaInfo);
         const pr = internalData.pr;
 
-        const nextRequest = _probeNextRequest(mediaType);
-
         let ot;
         if (mediaType === Constants.VIDEO) {
             ot = CmcdObjectType.VIDEO;
@@ -429,14 +402,6 @@ function CmcdModel() {
         }
         if (!isNaN(rtp)) {
             data.rtp = rtp;
-        }
-
-        if (nextRequest) {
-            if (request.url !== nextRequest.url) {
-                data.nor = encodeURIComponent(Utils.getRelativeUrl(request.url, nextRequest.url));
-            } else if (nextRequest.range) {
-                data.nrr = nextRequest.range;
-            }
         }
 
         if (encodedBitrate) {
@@ -687,17 +652,6 @@ function CmcdModel() {
         for (let key in _isStartup) {
             if (_isStartup.hasOwnProperty(key)) {
                 _isStartup[key] = true;
-            }
-        }
-    }
-
-    function _probeNextRequest(mediaType) {
-        if (!streamProcessors || streamProcessors.length === 0) {
-            return;
-        }
-        for (let streamProcessor of streamProcessors) {
-            if (streamProcessor.getType() === mediaType) {
-                return streamProcessor.probeNextRequest();
             }
         }
     }

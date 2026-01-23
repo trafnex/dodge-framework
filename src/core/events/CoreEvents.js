@@ -52,6 +52,7 @@ class CoreEvents extends EventsBase {
         this.INBAND_EVENTS = 'inbandEvents';
         this.INITIAL_STREAM_SWITCH = 'initialStreamSwitch';
         this.INIT_FRAGMENT_LOADED = 'initFragmentLoaded';
+        this.INIT_FRAGMENT_PARTIAL = 'initFragmentPartial';
         this.INIT_FRAGMENT_NEEDED = 'initFragmentNeeded';
         this.INTERNAL_MANIFEST_LOADED = 'internalManifestLoaded';
         this.ORIGINAL_MANIFEST_LOADED = 'originalManifestLoaded';
@@ -60,7 +61,9 @@ class CoreEvents extends EventsBase {
         this.LOADING_DATA_PROGRESS = 'loadingDataProgress';
         this.LOADING_ABANDONED = 'loadingAborted';
         this.MANIFEST_UPDATED = 'manifestUpdated';
+        this.PADDING_LOADED = 'paddingLoaded';
         this.MEDIA_FRAGMENT_LOADED = 'mediaFragmentLoaded';
+        this.MEDIA_FRAGMENT_PARTIAL = 'mediaFragmentPartial';
         this.MEDIA_FRAGMENT_NEEDED = 'mediaFragmentNeeded';
         this.MEDIAINFO_UPDATED = 'mediaInfoUpdated';
         this.QUOTA_EXCEEDED = 'quotaExceeded';

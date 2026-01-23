@@ -34,6 +34,7 @@ import MetricsConstants from './constants/MetricsConstants.js';
 import FragmentModel from './models/FragmentModel.js';
 import BufferController from './controllers/BufferController.js';
 import NotFragmentedTextBufferController from './text/NotFragmentedTextBufferController.js';
+import DefenseController from './controllers/DefenseController.js';
 import ScheduleController from './controllers/ScheduleController.js';
 import RepresentationController from '../dash/controllers/RepresentationController.js';
 import FactoryMaker from '../core/FactoryMaker.js';
@@ -49,7 +50,6 @@ import URLUtils from '../streaming/utils/URLUtils.js';
 import {PlayListTrace} from './vo/metrics/PlayList.js';
 import SegmentsController from '../dash/controllers/SegmentsController.js';
 import {HTTPRequest} from './vo/metrics/HTTPRequest.js';
-import TimeUtils from './utils/TimeUtils.js';
 import MediaInfoSelectionInput from './vo/MediaInfoSelectionInput.js';
 
 
@@ -89,6 +89,7 @@ function StreamProcessor(config) {
         pendingSwitchToVoRepresentation,
         qualityChangeInProgress,
         representationController,
+        defenseController,
         scheduleController,
         segmentsController,
         shouldRepeatRequest,
@@ -101,8 +102,11 @@ function StreamProcessor(config) {
 
         eventBus.on(Events.INIT_FRAGMENT_NEEDED, _onInitFragmentNeeded, instance);
         eventBus.on(Events.MEDIA_FRAGMENT_NEEDED, _onMediaFragmentNeeded, instance);
+        eventBus.on(Events.PADDING_LOADED, _onPaddingLoaded, instance);
         eventBus.on(Events.INIT_FRAGMENT_LOADED, _onInitFragmentLoaded, instance);
+        eventBus.on(Events.INIT_FRAGMENT_PARTIAL, _onInitFragmentPartial, instance);
         eventBus.on(Events.MEDIA_FRAGMENT_LOADED, _onMediaFragmentLoaded, instance);
+        eventBus.on(Events.MEDIA_FRAGMENT_PARTIAL, _onMediaFragmentPartial, instance);
         eventBus.on(Events.BUFFER_LEVEL_STATE_CHANGED, _onBufferLevelStateChanged, instance);
         eventBus.on(Events.BUFFER_CLEARED, _onBufferCleared, instance);
         eventBus.on(Events.SEEK_TARGET, _onSeekTarget, instance);
@@ -116,6 +120,8 @@ function StreamProcessor(config) {
     }
 
     function initialize(mediaSource, hasVideoTrack, isFragmented) {
+
+        defenseController = DefenseController(context).getInstance();
 
         segmentsController = SegmentsController(context).create({
             events: Events,
@@ -135,6 +141,8 @@ function StreamProcessor(config) {
             mediaPlayerModel,
             baseURLController: config.baseURLController,
             errHandler,
+            defenseController,
+            playbackController,
             segmentsController,
             settings,
             boxParser,
@@ -179,6 +187,7 @@ function StreamProcessor(config) {
             type,
             mimeType,
             adapter,
+            dashHandler,
             dashMetrics,
             mediaPlayerModel,
             fragmentModel,
@@ -247,8 +256,11 @@ function StreamProcessor(config) {
 
         eventBus.off(Events.INIT_FRAGMENT_NEEDED, _onInitFragmentNeeded, instance);
         eventBus.off(Events.MEDIA_FRAGMENT_NEEDED, _onMediaFragmentNeeded, instance);
-        eventBus.off(Events.INIT_FRAGMENT_LOADED, _onInitFragmentLoaded, instance);
-        eventBus.off(Events.MEDIA_FRAGMENT_LOADED, _onMediaFragmentLoaded, instance);
+        eventBus.off(Events.PADDING_LOADED, _onPaddingLoaded, instance);
+        //eventBus.off(Events.INIT_FRAGMENT_LOADED, _onInitFragmentLoaded, instance);
+        eventBus.off(Events.INIT_FRAGMENT_PARTIAL, _onInitFragmentPartial, instance);
+        //eventBus.off(Events.MEDIA_FRAGMENT_LOADED, _onMediaFragmentLoaded, instance);
+        eventBus.off(Events.MEDIA_FRAGMENT_PARTIAL, _onMediaFragmentPartial, instance);
         eventBus.off(Events.BUFFER_LEVEL_STATE_CHANGED, _onBufferLevelStateChanged, instance);
         eventBus.off(Events.BUFFER_CLEARED, _onBufferCleared, instance);
         eventBus.off(Events.SEEK_TARGET, _onSeekTarget, instance);
@@ -346,7 +358,7 @@ function StreamProcessor(config) {
     }
 
     function _shouldSetBufferingComplete(continuousBufferTime) {
-        return !isNaN(continuousBufferTime) && !isNaN(streamInfo.duration) && isFinite(streamInfo.duration) && continuousBufferTime >= streamInfo.start + streamInfo.duration
+        return !isNaN(continuousBufferTime) && !isNaN(streamInfo.duration) && isFinite(streamInfo.duration) && continuousBufferTime >= streamInfo.start + streamInfo.duration && !dashHandler.getIsTrailing()
     }
 
     /**
@@ -407,9 +419,10 @@ function StreamProcessor(config) {
                     _onMediaFragmentNeeded();
                     return;
                 }
-                // Init segment not in cache, send new request
+                dashHandler.updateDefendedStreamInfo(rep);
                 const request = dashHandler ? dashHandler.getInitRequest(currentMediaInfo, rep) : null;
                 if (request) {
+                    logger.debug(`Init request url for stream id ${streamInfo.id} and media type ${type} is ${request.url} with request range ${request.range}`);
                     fragmentModel.executeRequest(request);
                 } else if (rescheduleIfNoRequest) {
                     scheduleController.setInitSegmentRequired(true);
@@ -432,6 +445,8 @@ function StreamProcessor(config) {
             return;
         }
 
+        const rep = representationController.getCurrentRepresentation();
+        dashHandler.updateDefendedStreamInfo(rep);
         let request = _getFragmentRequest();
         if (request) {
             shouldUseExplicitTimeForRequest = false;
@@ -447,8 +462,8 @@ function StreamProcessor(config) {
      * @param {object} request
      * @private
      */
-    function _mediaRequestGenerated(request) {
-        if (!isNaN(request.startTime + request.duration)) {
+    async function _mediaRequestGenerated(request) {
+        if (request.full && !isNaN(request.startTime + request.duration)) {
             bufferingTime = request.startTime + request.duration;
         }
         request.delayLoadingTime = new Date().getTime() + scheduleController.getTimeToLoadDelay();
@@ -647,12 +662,6 @@ function StreamProcessor(config) {
             const lastInitializedRepresentationId = e.representationId;
             scheduleController.setLastInitializedRepresentationId(lastInitializedRepresentationId);
             logger.info('[' + type + '] ' + 'lastInitializedRepresentationId changed to ' + lastInitializedRepresentationId);
-        }
-
-        if (pendingSwitchToVoRepresentation && pendingSwitchToVoRepresentation.enabled) {
-            _prepareForDefaultQualitySwitch(pendingSwitchToVoRepresentation.newRepresentation, pendingSwitchToVoRepresentation.oldRepresentation);
-        } else if (!trackSwitchInProgress) {
-            scheduleController.startScheduleTimer(0);
         }
     }
 
@@ -1167,146 +1176,94 @@ function StreamProcessor(config) {
     }
 
     /**
-     * Probe the next request. This is used in the CMCD model to get information about the upcoming request. Note: No actual request is performed here.
-     * @return {FragmentRequest|null}
+     * Callback handler when init segment has been loaded. Based on settings, the init segment is saved to the cache, and appended to the buffer.
+     * @param {object} e
+     * @private
      */
-    function probeNextRequest() {
-        const voRepresentation = getRepresentation();
-
-        return dashHandler.getNextSegmentRequestIdempotent(
-            currentMediaInfo,
-            voRepresentation
-        );
-    }
-
     function _onInitFragmentLoaded(e) {
-        if (!settings.get().streaming.enableManifestTimescaleMismatchFix) {
-            return;
+        if (!e.suppress) {
+            let randomWait = settings.get().streaming.dodge.checkInterval;
+            randomWait += Math.round(Math.random() * settings.get().streaming.dodge.randomnessMax);
+            
+            scheduleController.setCheckPlaybackQuality(false);
+            setTimeout(() => {
+                if (pendingSwitchToVoRepresentation && pendingSwitchToVoRepresentation.enabled) {
+                    _prepareForDefaultQualitySwitch(pendingSwitchToVoRepresentation.newRepresentation, pendingSwitchToVoRepresentation.oldRepresentation);
+                } else if (!trackSwitchInProgress) {
+                    scheduleController.startScheduleTimer();
+                }
+            }, randomWait);
         }
-        const chunk = e.chunk;
-        const bytes = chunk.bytes;
-        const representationId = chunk.representation.id;
-        const currentRepresentation = getRepresentation(representationId);
-        if (currentRepresentation) {
-            currentRepresentation.timescale = boxParser.getMediaTimescaleFromMoov(bytes);
-        }
+
+        logger.debug('Append Init fragment', type, ' with representationId:', e.chunk.representation.id, ' and quality:', e.chunk.quality, ', data size:', e.chunk.bytes.byteLength);
+
+        bufferController.appendToBuffer(e.chunk, null);
     }
 
+    function _onInitFragmentPartial(e) {
+        if (!e.suppress) {
+            let randomWait = settings.get().streaming.dodge.checkInterval;
+            randomWait += Math.round(Math.random() * settings.get().streaming.dodge.randomnessMax);
+
+            scheduleController.setCheckPlaybackQuality(false);
+            scheduleController.startScheduleTimer(randomWait);
+        }
+
+        logger.debug('Partial Init fragment ' + type + ' (' + dashHandler.getRemainingInitCycles() + ' remaining) with representationId:' + e.representation.id + ' and quality:' + e.quality + ', data size:' + e.byteLength);
+    }
+
+    /**
+     * Calls the appendToBuffer function to append the segment to the buffer. In case of a track switch the buffer might be cleared.
+     * @param {object} e
+     */
     function _onMediaFragmentLoaded(e) {
-        const chunk = e.chunk;
-        const bytes = chunk.bytes;
-        const representationId = chunk.representation.id;
-        const currentRepresentation = getRepresentation(representationId);
-        // If we switch tracks this event might be fired after the representations in the RepresentationController have been updated according to the new MediaInfo.
-        // In this case there will be no currentRepresentation and voRepresentation matching the "old" quality
-        if (currentRepresentation) {
-
-            let isoFile;
-
-            // Check for inband prft on media segment (if enabled)
-            if (settings.get().streaming.parseInbandPrft && e.request.type === HTTPRequest.MEDIA_SEGMENT_TYPE) {
-                isoFile = isoFile ? isoFile : boxParser.parse(bytes);
-                const timescale = currentRepresentation.timescale;
-                const prfts = _handleInbandPrfts(isoFile, timescale);
-                if (prfts && prfts.length) {
-                    eventBus.trigger(MediaPlayerEvents.INBAND_PRFT,
-                        { data: prfts },
-                        { streamId: streamInfo.id, mediaType: type }
-                    );
+        if (!e.suppress) {
+            let randomWait = settings.get().streaming.dodge.checkInterval;
+            randomWait += Math.round(Math.random() * settings.get().streaming.dodge.randomnessMax);
+            
+            scheduleController.setCheckPlaybackQuality(true);
+            setTimeout(() => {
+                if (pendingSwitchToVoRepresentation && pendingSwitchToVoRepresentation.enabled) {
+                    _prepareForDefaultQualitySwitch(pendingSwitchToVoRepresentation.newRepresentation, pendingSwitchToVoRepresentation.oldRepresentation);
+                } else if (!trackSwitchInProgress) {
+                    scheduleController.startScheduleTimer();
                 }
-            }
-
-            const eventStreamMedia = adapter.getEventsFor(currentRepresentation.mediaInfo, null, streamInfo);
-            const eventStreamTrack = adapter.getEventsFor(currentRepresentation, currentRepresentation, streamInfo);
-
-            if (eventStreamMedia && eventStreamMedia.length > 0 || eventStreamTrack && eventStreamTrack.length > 0) {
-                const request = e.request;
-
-                isoFile = isoFile ? isoFile : boxParser.parse(bytes);
-                const events = _handleInbandEvents(isoFile, request, eventStreamMedia, eventStreamTrack);
-                eventBus.trigger(Events.INBAND_EVENTS,
-                    { events: events },
-                    { streamId: streamInfo.id }
-                );
-            }
+            }, randomWait);
+            //scheduleController.startScheduleTimer(randomWait);
         }
+
+        // Always append the duration from the MPD. Otherwise, compensate
+        // with the mock buffer. This is very important to avoid leakage from
+        // the last segment, whose duration may differ from all other segments.
+        bufferController.appendToBuffer(e.chunk, e.request);
     }
 
-    function _handleInbandPrfts(isoFile, timescale) {
-        const prftBoxes = isoFile.getBoxes('prft');
+    function _onMediaFragmentPartial(e) {
+        if (!e.suppress) {
+            let randomWait = settings.get().streaming.dodge.checkInterval;
+            randomWait += Math.round(Math.random() * settings.get().streaming.dodge.randomnessMax);
 
-        const prfts = [];
-        prftBoxes.forEach(prft => {
-            prfts.push(_parsePrftBox(prft, timescale));
-        });
+            scheduleController.setCheckPlaybackQuality(false);
+            scheduleController.startScheduleTimer(randomWait);
+        }
 
-        return prfts;
+        logger.debug('Partial Data fragment ' + type + ' with representationId:' + e.representation.id + ' and quality:' + e.quality + ', data size:' + e.byteLength);
     }
 
-    function _parsePrftBox(prft, timescale) {
-        // Get prft type according to box flags
-        let type = 'unknown';
-        switch (prft.flags) {
-            case 0:
-                type = DashConstants.PRODUCER_REFERENCE_TIME_TYPE.ENCODER;
-                break;
-            case 16:
-                type = DashConstants.PRODUCER_REFERENCE_TIME_TYPE.APPLICATION;
-                break;
-            case 24:
-                type = DashConstants.PRODUCER_REFERENCE_TIME_TYPE.CAPTURED;
-                break;
-            default:
-                break;
+    function _onPaddingLoaded(e) {
+        if (!e.suppress) {
+            let randomWait = settings.get().streaming.dodge.checkInterval;
+            randomWait += Math.round(Math.random() * settings.get().streaming.dodge.randomnessMax);
+
+            scheduleController.setCheckPlaybackQuality(e.bufferFlag);
+            scheduleController.startScheduleTimer(randomWait);
         }
 
-        // Get NPT timestamp according to IETF RFC 5905, relative to 1/1/1900
-        let ntpTimestamp = (prft.ntp_timestamp_sec * 1000) + (prft.ntp_timestamp_frac / 2 ** 32 * 1000);
-        ntpTimestamp = TimeUtils(context).getInstance().ntpToUTC(ntpTimestamp);
+        logger.debug('Padding fragment ' + type + ' with representationId:' + e.representation.id + ' and quality:' + e.quality + ', data size:' + e.byteLength);
 
-        const mediaTime = (prft.media_time / timescale);
-
-        return {
-            type,
-            ntpTimestamp,
-            mediaTime
-        }
-    }
-
-    function _handleInbandEvents(isoFile, request, mediaInbandEvents, trackInbandEvents) {
-        try {
-            const eventStreams = {};
-            const events = [];
-
-            /* Extract the possible schemeIdUri : If a DASH client detects an event message box with a scheme that is not defined in MPD, the client is expected to ignore it */
-            const inbandEvents = mediaInbandEvents.concat(trackInbandEvents);
-            for (let i = 0, ln = inbandEvents.length; i < ln; i++) {
-                eventStreams[inbandEvents[i].schemeIdUri + '/' + inbandEvents[i].value] = inbandEvents[i];
-            }
-
-            const eventBoxes = isoFile.getBoxes('emsg');
-
-            if (!eventBoxes || eventBoxes.length === 0) {
-                return events;
-            }
-
-            const sidx = isoFile.getBox('sidx');
-            const mediaAnchorTime = sidx && !isNaN(sidx.earliest_presentation_time) && !isNaN(sidx.timescale) ? sidx.earliest_presentation_time / sidx.timescale : request && !isNaN(request.mediaStartTime) ? request.mediaStartTime : 0;
-            const fragmentMediaStartTime = Math.max(mediaAnchorTime, 0);
-            const voRepresentation = representationController.getCurrentRepresentation();
-
-            for (let i = 0, ln = eventBoxes.length; i < ln; i++) {
-                const event = adapter.getEvent(eventBoxes[i], eventStreams, fragmentMediaStartTime, voRepresentation);
-
-                if (event) {
-                    events.push(event);
-                }
-            }
-
-            return events;
-        } catch (e) {
-            return [];
-        }
+        // We could also have an event handler in BufferController, but we need
+        // to ensure sequential firing order here, so call explicitly.
+        bufferController.onPaddingLoaded(e);
     }
 
     function createBufferSinks(previousBufferSinks, oldRepresentation) {
@@ -1474,6 +1431,7 @@ function StreamProcessor(config) {
                 abrController,
                 capabilities,
                 errHandler,
+                dashHandler,
                 fragmentModel,
                 manifestModel,
                 mediaController,
@@ -1535,7 +1493,6 @@ function StreamProcessor(config) {
         prepareOuterPeriodPlaybackSeeking,
         prepareQualityChange,
         prepareTrackSwitch,
-        probeNextRequest,
         reset,
         selectMediaInfo,
         setExplicitBufferingTime,

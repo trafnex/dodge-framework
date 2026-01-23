@@ -53,13 +53,16 @@ function FragmentController(config) {
 
     let instance,
         logger,
-        fragmentModels;
+        fragmentModels,
+        partialSegments,
+        pendingInit,
+        pendingMedia;
 
     function setup() {
         logger = debug.getLogger(instance);
         resetInitialSettings();
         eventBus.on(MediaPlayerEvents.FRAGMENT_LOADING_COMPLETED, onFragmentLoadingCompleted, instance);
-        eventBus.on(MediaPlayerEvents.FRAGMENT_LOADING_PROGRESS, onFragmentLoadingCompleted, instance);
+        //eventBus.on(MediaPlayerEvents.FRAGMENT_LOADING_PROGRESS, onFragmentLoadingCompleted, instance);
     }
 
     function getStreamId() {
@@ -102,11 +105,14 @@ function FragmentController(config) {
             fragmentModels[model].reset();
         }
         fragmentModels = {};
+        partialSegments = [];
+        pendingInit = [];
+        pendingMedia = [];
     }
 
     function reset() {
         eventBus.off(MediaPlayerEvents.FRAGMENT_LOADING_COMPLETED, onFragmentLoadingCompleted, this);
-        eventBus.off(MediaPlayerEvents.FRAGMENT_LOADING_PROGRESS, onFragmentLoadingCompleted, this);
+        //eventBus.off(MediaPlayerEvents.FRAGMENT_LOADING_PROGRESS, onFragmentLoadingCompleted, this);
         resetInitialSettings();
     }
 
@@ -125,6 +131,69 @@ function FragmentController(config) {
         chunk.endFragment = endFragment;
 
         return chunk;
+    }
+
+    // Combine partial responses with a given index and remove from the list.
+    function _concatPartialSegments(index, representationId, mediaType) {
+        logger.debug('Concat partial responses for segment with index ' + index + ', representation id' + representationId);
+
+        // Pass 1: Identify relevant pieces and resource size
+        let pieces = [];
+        let minRangeStart = Number.MAX_SAFE_INTEGER;
+        let maxRangeEnd = 0;
+
+        for (let i = partialSegments.length - 1; i >= 0; i--) {
+            const piece = partialSegments[i];
+
+            if ((index == piece.request.index || (isNaN(index) && isNaN(piece.request.index))) && mediaType == piece.request.mediaType && representationId == piece.request.representation.id) {
+                let rangeStart = 0;
+                let rangeEnd = piece.response.byteLength - 1;
+
+                if (piece.request.originalRange) {
+                    const rangeTokens = piece.request.originalRange.split('-');
+
+                    rangeStart = parseInt(rangeTokens[0], '10');
+                    rangeEnd = parseInt(rangeTokens[1], '10');
+                } else if (piece.request.range) {
+                    const rangeTokens = piece.request.range.split('-');
+
+                    rangeStart = parseInt(rangeTokens[0], '10');
+                    rangeEnd = parseInt(rangeTokens[1], '10');
+
+                    if (isNaN(rangeStart)) {
+                        rangeStart = 0;
+                    }
+                    if (isNaN(rangeEnd)) {
+                        rangeEnd = rangeStart + piece.response.byteLength - 1;
+                    }
+                }
+
+                minRangeStart = Math.min(minRangeStart, rangeStart);
+                maxRangeEnd = Math.max(maxRangeEnd, rangeEnd);
+                pieces.push(piece);
+
+                partialSegments.splice(i, 1);
+            }
+        }
+
+        // Pass 2: Reassemble the pieces into one byte array
+        const totalSize = maxRangeEnd - minRangeStart + 1;
+        logger.debug('Found ' + pieces.length + ' partial responses (' + totalSize + ' bytes) for segment with index ' + index);
+
+        let result = new Uint8Array(totalSize);
+
+        for (let i = 0; i < pieces.length; i++) {
+            const piece = pieces[i];
+            const rangeTokens = piece.request.range ? piece.request.range.split('-') : ['0'];
+            const rangeStart = parseInt(rangeTokens[0], '10');
+
+            logger.debug('Partial response combination: rangeStart=' + rangeStart + ', byteLength=' + piece.response.byteLength);
+            result.set(piece.response, rangeStart);
+        }
+
+        logger.debug('Combined ' + pieces.length + ' partial responses for segment with index ' + index);
+
+        return result;
     }
 
     function onFragmentLoadingCompleted(e) {
@@ -149,11 +218,116 @@ function FragmentController(config) {
             logger.warn('No ' + request.mediaType + ' bytes to push or stream is inactive.');
             return;
         }
-        const chunk = createDataChunk(bytes, request, streamInfo.id, e.type !== Events.FRAGMENT_LOADING_PROGRESS);
-        eventBus.trigger(isInit ? Events.INIT_FRAGMENT_LOADED : Events.MEDIA_FRAGMENT_LOADED,
-            { chunk, request },
-            { streamId: strInfo.id, mediaType: request.mediaType }
-        );
+
+        // Check if any pending events should be fired first.
+        // The pending events list will be traversed from the end,
+        // so make sure it is in reverse firing order.
+        let primaryEvent = null;
+        let secondaryEvents = [];
+
+        if (request.buffer) {
+            // [data segments]
+            for (let i = pendingMedia.length - 1; i >= 0; i--) {
+                const event = pendingMedia[i];
+
+                if (event.streamId == strInfo.id && event.mediaType == request.mediaType) {
+                    if (event.representationId == request.representation.id) {
+                        secondaryEvents.push(event);
+                    }
+                    pendingMedia.splice(i, 1);
+                }
+            }
+
+            // [init segments]
+            for (let i = pendingInit.length - 1; i >= 0; i--) {
+                const event = pendingInit[i];
+                
+                if (event.streamId == strInfo.id && event.mediaType == request.mediaType) {
+                    secondaryEvents.push(event);
+                    pendingInit.splice(i, 1);
+                }
+            }
+        }
+
+        // Treat all requests as partial for uniformity and simplicity.
+        if (!request.padding) {
+            partialSegments.push({
+                request: request,
+                response: new Uint8Array(bytes)
+            });
+        }
+
+        // If this request completes a sequence of partial segment downloads,
+        // put together the pieces we have and fire or store a loaded event.
+        if (request.full) {
+            const response = _concatPartialSegments(request.index, request.representation.id, request.mediaType);
+            const chunk = createDataChunk(response, request, streamInfo.id, e.type !== Events.FRAGMENT_LOADING_PROGRESS);
+
+            if (request.buffer) {
+                primaryEvent = {
+                    chunk: chunk,
+                    event: isInit ? Events.INIT_FRAGMENT_LOADED : Events.MEDIA_FRAGMENT_LOADED,
+                    index: isInit ? NaN : request.index
+                };
+            } else {
+                if (isInit) {
+                    pendingInit.push({
+                        chunk: chunk,
+                        streamId: strInfo.id,
+                        mediaType: request.mediaType,
+                        representationId: request.representation.id,
+                        event: Events.INIT_FRAGMENT_LOADED,
+                        index: NaN
+                    });
+                } else {
+                    pendingMedia.push({
+                        chunk: chunk,
+                        streamId: strInfo.id,
+                        mediaType: request.mediaType,
+                        representationId: request.representation.id,
+                        event: Events.MEDIA_FRAGMENT_LOADED,
+                        index: request.index
+                    });
+                }
+                primaryEvent = {
+                    event: isInit ? Events.INIT_FRAGMENT_PARTIAL : Events.MEDIA_FRAGMENT_PARTIAL,
+                    index: isInit ? NaN : request.index
+                };
+            }
+        } else if (!request.padding) {
+            primaryEvent = {
+                event: isInit ? Events.INIT_FRAGMENT_PARTIAL : Events.MEDIA_FRAGMENT_PARTIAL,
+                index: isInit ? NaN : request.index
+            };
+        } else {
+            primaryEvent = {
+                event: Events.PADDING_LOADED,
+                index: request.index
+            };
+        }
+
+        // Finally, fire all events in chronological order. Only the last one
+        // may result in further segment downloads; the others are suppressed.
+        for (let i = secondaryEvents.length - 1; i >= 0; i--) {
+            const event = secondaryEvents[i];
+
+            eventBus.trigger(event.event,
+                { chunk: event.chunk, suppress: true }, // removed request, segment won't be blacklisted if appending fails
+                { streamId: strInfo.id, mediaType: request.mediaType }
+            );
+        }
+
+        if (primaryEvent.event == Events.INIT_FRAGMENT_LOADED || primaryEvent.event == Events.MEDIA_FRAGMENT_LOADED) {
+            eventBus.trigger(primaryEvent.event,
+                { chunk: primaryEvent.chunk, suppress: false }, // removed request, segment won't be blacklisted if appending fails
+                { streamId: strInfo.id, mediaType: request.mediaType }
+            );
+        } else { // send extra data with partial events for debugging purposes
+            eventBus.trigger(primaryEvent.event,
+                { index: primaryEvent.index, representation: request.representation, quality: request.quality, byteLength: bytes.byteLength, trail: request.trail, buffer: request.buffer && secondaryEvents.length == 0, bufferFlag: request.buffer, suppress: false },
+                { streamId: strInfo.id, mediaType: request.mediaType }
+            );
+        }
     }
 
     instance = {

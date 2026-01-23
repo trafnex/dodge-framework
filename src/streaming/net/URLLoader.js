@@ -28,6 +28,7 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
+import Debug from '../../core/Debug.js';
 import FactoryMaker from '../../core/FactoryMaker.js';
 import SchemeLoaderFactory from '../../streaming/net/SchemeLoaderFactory.js';
 

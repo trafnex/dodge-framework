@@ -326,6 +326,15 @@ function FetchLoader() {
     }
 
     function _getFetchResourceRequestObject(commonMediaRequest, headers, abortController) {
+        // Pad headers as needed
+        // Assuming contents not greater than paddingLength, otherwise RangeError
+        let length = commonMediaRequest.url.length;
+        for (const key in headers.keys()) {
+            length += key.length + headers.get(key).length + 3; // colon, space, newline
+        }
+        let random = Math.random() * settings.get().streaming.dodge.paddingRandomness;
+        headers.append(settings.get().streaming.dodge.paddingHeader, 'Dodge/' + ''.padEnd(settings.get().streaming.dodge.paddingLength + random - length, 'PAD'));
+
         const fetchResourceRequestObject = new Request(commonMediaRequest.url, {
             method: commonMediaRequest.method,
             headers: headers,

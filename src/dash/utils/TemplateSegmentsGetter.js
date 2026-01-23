@@ -31,7 +31,7 @@
 
 import FactoryMaker from '../../core/FactoryMaker.js';
 import Constants from '../../streaming/constants/Constants.js';
-import {replaceTokenForTemplate, getIndexBasedSegment} from './SegmentsUtils.js';
+import {replaceTokenForTemplate, countUnpaddedTokenOccurrences, getIndexBasedSegment} from './SegmentsUtils.js';
 
 function TemplateSegmentsGetter(config, isDynamic) {
     config = config || {};
@@ -79,9 +79,15 @@ function TemplateSegmentsGetter(config, isDynamic) {
             seg.replacementTime = Math.round(index * representation.segmentDuration * representation.timescale, 10);
 
             let url = template.media;
+            let replacements = {
+                'Number': countUnpaddedTokenOccurrences(url, 'Number'),
+                'Time': countUnpaddedTokenOccurrences(url, 'Time'),
+            }
+
             url = replaceTokenForTemplate(url, 'Number', seg.replacementNumber);
             url = replaceTokenForTemplate(url, 'Time', seg.replacementTime);
             seg.media = url;
+            seg.replacements = replacements;
         }
 
         return seg;

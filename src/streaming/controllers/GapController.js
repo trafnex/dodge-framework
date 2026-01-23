@@ -345,7 +345,7 @@ function GapController() {
             }
         }
 
-        if (seekToPosition > 0 && lastGapJumpPosition !== seekToPosition && seekToPosition > currentTime && !jumpTimeoutHandler) {
+        if (seekToPosition > 0 && lastGapJumpPosition !== seekToPosition && seekToPosition > currentTime && !jumpTimeoutHandler && playbackController.getTimeSinceStreamEnd() == 0) {
             const timeUntilGapEnd = seekToPosition - currentTime;
 
             if (jumpToStreamEnd) {

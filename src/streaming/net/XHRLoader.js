@@ -29,6 +29,7 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 import FactoryMaker from '../../core/FactoryMaker.js';
+import Settings from '../../core/Settings.js';
 import Utils from '../../core/Utils.js';
 
 /**
@@ -37,6 +38,9 @@ import Utils from '../../core/Utils.js';
  * @description Manages download of resources via HTTP.
  */
 function XHRLoader() {
+
+    const context = this.context;
+    const settings = Settings(context).getInstance();
 
     let instance;
     let xhr;
@@ -50,6 +54,7 @@ function XHRLoader() {
         xhr = null;
         xhr = new XMLHttpRequest();
         xhr.open(commonMediaRequest.method, commonMediaRequest.url, true);
+        let length = commonMediaRequest.url.length;
 
         if (commonMediaRequest.responseType) {
             xhr.responseType = commonMediaRequest.responseType;
@@ -60,9 +65,15 @@ function XHRLoader() {
                 let value = commonMediaRequest.headers[header];
                 if (value) {
                     xhr.setRequestHeader(header, value);
+                    length += header.length + value.length + 3; // colon, space, newline
                 }
             }
         }
+
+        // Pad headers as needed
+        // Assuming contents not greater than paddingLength, otherwise RangeError
+        let random = Math.random() * settings.get().streaming.dodge.paddingRandomness;
+        xhr.setRequestHeader(settings.get().streaming.dodge.paddingHeader, 'Dodge/' + ''.padEnd(settings.get().streaming.dodge.paddingLength + random - length, 'PAD'));
 
         xhr.withCredentials = commonMediaRequest.credentials === 'include';
         xhr.timeout = commonMediaRequest.timeout;
