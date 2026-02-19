@@ -1,9 +1,8 @@
-<img src="dodge-logo.png" width="400">
-
 <p align="left">
-<picture>
+<picture width="400">
   <source media="(prefers-color-scheme: dark)" srcset="https://github.com/trafnex/dodge-framework/blob/master/dodge-logo-dark.png">
-  <img src="https://github.com/trafnex/dodge-framework/blob/master/dodge-logo-light.png">
+  <source media="(prefers-color-scheme: light)" srcset="https://github.com/trafnex/dodge-framework/blob/master/dodge-logo-light.png">
+  <img src="https://github.com/trafnex/dodge-framework/blob/master/dodge-logo-light.png" width="400">
 </picture>
 </p>
 
