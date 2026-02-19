@@ -25,7 +25,7 @@ This artifact is available at: https://github.com/trafnex/dodge-framework/tree/m
 
 ### Set up the environment
 
-Though not required for the Available badge, we include instructions on how to perform basic tests here. This information is also available in the README.md file in the repository root. We assume that the instructions will be followed on a Debian-based Linux machine.
+Though not required for the Available badge, we include instructions on how to perform basic tests here. We assume that the instructions will be followed on a Debian-based machine.
 
 Start by installing Node Package Manager, Python 3, and Flask if you want to test the Dodge framework:
 
@@ -46,7 +46,7 @@ npm install
 npm run build
 ```
 
-Now, you can run the Flask server that hosts a test page with some Dodge players (corresponding to the demo linked in README.md). From the `artifact` directory:
+Now, you can run the Flask server that hosts a test page with some Dodge players (corresponding to the demo linked in README.md in the repository root). From the `artifact` directory:
 
 ```
 python3 server.py
@@ -74,4 +74,4 @@ That's it!
 
 ## Notes on Reusability
 
-Check out README.md for information on how Dodge can be used outside of this artifact. There are lots of potential use cases! Dodge-mimic could also be deployed in practice, but we use it only as a proof-of-concept defense and don't recommend it for real-world use.
+Check out README.md in the repository root for information on how Dodge can be used outside of this artifact. There are lots of potential use cases! Dodge-mimic could also be deployed in practice, but we use it only as a proof-of-concept defense and don't recommend it for real-world use.
