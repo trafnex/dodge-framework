@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Dodge demo</title>
+
+    <script src="/framework/dist/modern/umd/dash.all.min.js"></script>
+
+    <!-- Bootstrap core CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+        video {
+            width: 320px;
+            height: 180px;
+        }
+    </style>
+</head>
+<body class="bg-body-tertiary">
+
+<main class="py-4 py-md-4">
+    <div class="container-xl">
+        <!-- Header -->
+        <header class="mb-3 mb-md-4">
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 bg-body rounded-4 shadow-sm border px-3 px-md-4 py-3">
+                <div class="d-flex align-items-center gap-3">
+                    <span class="h4 fw-semibold fw-bold font-monospace mb-0"><i>Dodge defense framework: demo page</i></span>
+                </div>
+            </div>
+        </header>
+
+        <div class="row g-4 g-lg-5">
+            <!-- Left column -->
+            <div class="col-lg-4">
+                <section class="card border-0 shadow-sm rounded-4 h-100">
+                    <div class="card-body p-4 p-xl-5">
+                        <p class="text-body-secondary mb-3">
+                            This page is a basic demo of <span class="fw-semibold">Dodge</span>, a client-side framework for
+                            application-layer defenses against video fingerprinting.
+                        </p>
+						
+						<p class="text-body-secondary mb-3">
+                            Dodge generalizes the telltale request-response sequence of DASH video streaming, replacing segment downloads with customizable
+                            <span class="fst-italic">cycles</span> that are specified in a JSON file called an <span class="fst-italic">extended manifest</span>.
+						</p>
+						
+						<p class="text-body-secondary mb-3">
+							This provides a significant degree of control over the sequence of request and response sizes in a video stream, enabling quick and
+							easy deployment of different types of traffic analysis defenses without any required changes to servers or network infrastructure.
+                        </p>
+						
+						<p class="text-body-secondary mb-3">
+							We've implemented Dodge as a fork of the
+                            <a class="link-primary link-underline-opacity-25 link-underline-opacity-100-hover" href="https://dashjs.org">dash.js</a> video player;
+							our code can be used as is (like in the examples on this page) or as a reference when implementing defenses in other video players.
+						</p>
+
+                        <p class="text-body-secondary mb-3">
+                            For more details, see the PoPETS 2026 paper
+                            <span class="fst-italic">"Dodge: A Client-Side Framework for Application-Layer Video Fingerprinting Defenses"</span>
+                            (<a class="link-primary link-underline-opacity-25 link-underline-opacity-100-hover" href="https://www.ethanwitwer.com/assets/pdf/2026-pets2.pdf">link</a>),
+                            and our
+                            <a class="link-primary link-underline-opacity-25 link-underline-opacity-100-hover" href="https://github.com/trafnex/dodge-framework">GitHub repo</a>.
+                        </p>
+
+                        <div class="alert alert-light border rounded-4 mb-0">
+                            <small class="text-body-secondary">
+                                Dodge is not affiliated with or endorsed by the Dash Industry Forum or dash.js contributors.
+                            </small>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Right column -->
+            <div class="col-lg-8">
+                <section class="bg-body rounded-4 shadow-sm border p-4 p-xl-5">
+                    <div class="mb-4">
+                        <h2 class="h5 fw-semibold mb-2">Player examples</h2>
+						<p class="text-body-secondary mb-0">
+                            Note that these examples have only been tested in Firefox and Chrome.
+                        </p>
+                    </div>
+
+                    <!-- Example 1 -->
+                    <div class="p-3 p-md-4 rounded-4 border bg-body-secondary-subtle">
+                        <p class="small text-body-secondary mb-3">
+                            This is a Dodge player in which an <i>extended manifest</i> is specified via the <code>src</code>
+                            attribute of the video element. It plays the short video Big Buck Bunny (often used as a test
+                            video), with a minimal extended manifest that mirrors undefended DASH traffic: each video and
+                            audio segment is downloaded with a single cycle, whose range covers the whole segment. If you
+							want to see the network traffic, open Developer Tools in your browser (which can
+							usually be done by pressing F12), click on the Network tab, and reload the page.
+                        </p>
+
+                        <div class="d-flex flex-column align-items-start gap-3">
+                            <div class="rounded-3 border bg-body shadow-sm p-2">
+							<video id="videoPlayer1" controls></video>
+								<script>
+									(function () {
+										var url = "/artifact/bbb_30fps_undef.exmfst.json";
+										var player = dashjs.MediaPlayer().create();
+										player.initialize(document.querySelector("#videoPlayer1"), url, true);
+									})();
+								</script>
+                            </div>
+                            <div class="w-100">
+                                <div class="d-flex align-items-center justify-content-between gap-2">
+                                    <span class="badge text-bg-secondary-subtle text-secondary border rounded-pill">Undefended</span>
+                                    <span class="text-body-secondary small">One cycle per segment</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Divider -->
+                    <div class="my-4">
+                        <hr class="border-secondary-subtle opacity-0">
+                    </div>
+
+                    <!-- Example 2 -->
+                    <div class="p-3 p-md-4 rounded-4 border bg-body-secondary-subtle">
+                        <p class="small text-body-secondary mb-3">
+                            Here, a Dodge player is also provided an extended manifest for the Big Buck Bunny video,
+                            but with a simple defense: all cycles (and, thus, responses from the server) have about
+                            the same size within each representation/quality. With adjustment of cycle sizes to account for
+							header variation, cycles could be made to have the exact same size, at least with HTTP/1.1. A
+							better solution for HTTP/2 and HTTP/3 QUIC is to slightly randomize cycle sizes each time a manifest
+							is requested. See the paper for more details on how to do this!
+                        </p>
+
+                        <div class="d-flex flex-column align-items-start gap-3">
+                            <div class="rounded-3 border bg-body shadow-sm p-2">
+								<video id="videoPlayer2" controls></video>
+								<script>
+									(function () {
+										var url = "/artifact/bbb_30fps_constant.exmfst.json";
+										var player = dashjs.MediaPlayer().create();
+										player.initialize(document.querySelector("#videoPlayer2"), url, true);
+									})();
+								</script>
+                            </div>
+                            <div class="w-100">
+                                <div class="d-flex align-items-center justify-content-between gap-2">
+                                    <span class="badge text-bg-success-subtle text-success border rounded-pill">Constant-size defense</span>
+                                    <span class="text-body-secondary small">Cycles have the same size</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+					
+					<!-- Divider -->
+                    <div class="my-4">
+                        <hr class="border-secondary-subtle opacity-0">
+                    </div>
+
+                    <!-- Example 3 -->
+                    <div class="p-3 p-md-4 rounded-4 border bg-body-secondary-subtle">
+                        <p class="small text-body-secondary mb-3">
+                            In this example, a Dodge player is provided an extended manifest for the short animated film Elephants Dream,
+							which mimics the Big Buck Bunny extended manifest in the second example. Its sequence of cycles is
+							identical to Big Buck Bunny played at 4000k (disregarding differences in HTTP header sizes). Note that
+							the video will not play to the end: we've limited the extended manifest to the same duration as Big
+							Buck Bunny. Another strategy is to download more cycles after all actual content - see the paper
+							for information on this!
+                        </p>
+
+                        <div class="d-flex flex-column align-items-start gap-3">
+                            <div class="rounded-3 border bg-body shadow-sm p-2">
+								<video id="videoPlayer3" controls></video>
+								<script>
+									(function () {
+										var url = "/artifact/elephants_dream_mimicry.exmfst.json";
+										var player = dashjs.MediaPlayer().create();
+										player.initialize(document.querySelector("#videoPlayer3"), url, true);
+									})();
+								</script>
+                            </div>
+                            <div class="w-100">
+                                <div class="d-flex align-items-center justify-content-between gap-2">
+                                    <span class="badge text-bg-primary-subtle text-primary border rounded-pill">Mimicry defense</span>
+                                    <span class="text-body-secondary small">Cycles match Big Buck Bunny</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="mt-4 mt-md-5">
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 text-body-secondary small border-top pt-3">
+                <span>Copyright &copy; 2026 Ethan Witwer</span>
+            </div>
+        </footer>
+    </div>
+</main>
+</body>
+</html>

@@ -780,7 +780,7 @@ fn save_manifests_padding(global_state: &Arc<Mutex<GlobalState>>, index: usize) 
             // cycle sizes (response size) to the minimum value in the set
             // {x | largest segment size for video x}, for all x in the
             // current anonymity set
-            let upper_bound = *set.max_cycle_size.get(label).unwrap();
+            let mut upper_bound = *set.max_cycle_size.get(label).unwrap();
 
             // Now, we are approaching the primary logic of the algorithm,
             // after initializing a few important variables. We loop through
