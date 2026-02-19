@@ -70,4 +70,4 @@ Please raise any issue related to dash.js in general directly on their [GitHub i
 
 dash.js is released under a BSD License; see the [LICENSE file](https://github.com/trafnex/dodge-framework/blob/master/framework/LICENSE.md) in the `framework` folder of this repository.
 
-All contributions, additions, and changes to dash.js (that is, the implementation of Dodge) in this repository are available under the BSD 3-Clause License. Defense code (every file in the `defenses` folder in the repository) is similarly licensed under the BSD 3-Clause License. See the [LICENSE file](https://github.com/trafnex/dodge-framework/blob/master/NOTICE.md) in the root of the repository for further details.
+All contributions, additions, and changes to dash.js (that is, the implementation of Dodge) are available under the BSD 3-Clause License. Defense code (every file in the `defenses` folder) is similarly licensed under the BSD 3-Clause License. See the [LICENSE file](https://github.com/trafnex/dodge-framework/blob/master/LICENSE.md) in the root of the repository for further details.
