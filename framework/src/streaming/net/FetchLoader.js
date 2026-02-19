@@ -333,7 +333,14 @@ function FetchLoader() {
             length += key.length + headers.get(key).length + 3; // colon, space, newline
         }
         let random = Math.random() * settings.get().streaming.dodge.paddingRandomness;
-        headers.append(settings.get().streaming.dodge.paddingHeader, 'Dodge/' + ''.padEnd(settings.get().streaming.dodge.paddingLength + random - length, 'PAD'));
+        let padHdr = settings.get().streaming.dodge.paddingHeader;
+        if (padHdr == '') {
+            let url = new URL(commonMediaRequest.url, window.location.href);
+            url.searchParams.append('padding', 'Dodge/' + ''.padEnd(settings.get().streaming.dodge.paddingLength + random - length, 'PAD'));
+            commonMediaRequest.url = url.toString();
+        } else {
+            headers.append(padHdr, 'Dodge/' + ''.padEnd(settings.get().streaming.dodge.paddingLength + random - length, 'PAD'));
+        }
 
         const fetchResourceRequestObject = new Request(commonMediaRequest.url, {
             method: commonMediaRequest.method,

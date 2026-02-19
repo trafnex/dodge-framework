@@ -53,8 +53,31 @@ function XHRLoader() {
     function load(commonMediaRequest, commonMediaResponse) {
         xhr = null;
         xhr = new XMLHttpRequest();
-        xhr.open(commonMediaRequest.method, commonMediaRequest.url, true);
         let length = commonMediaRequest.url.length;
+
+        if (commonMediaRequest.headers) {
+            for (let header in commonMediaRequest.headers) {
+                let value = commonMediaRequest.headers[header];
+                if (value) {
+                    length += header.length + value.length + 3; // colon, space, newline
+                }
+            }
+        }
+
+        // Pad headers as needed
+        // Assuming contents not greater than paddingLength, otherwise RangeError
+        let padHdr = settings.get().streaming.dodge.paddingHeader;
+        let random = Math.random() * settings.get().streaming.dodge.paddingRandomness;
+        if (padHdr == '') {
+            let url = new URL(commonMediaRequest.url, window.location.href);
+            url.searchParams.append('padding', 'Dodge/' + ''.padEnd(settings.get().streaming.dodge.paddingLength + random - length, 'PAD'));
+            commonMediaRequest.url = url.toString();
+        }
+
+        xhr.open(commonMediaRequest.method, commonMediaRequest.url, true);
+        if (padHdr != '') {
+            xhr.setRequestHeader(padHdr, 'Dodge/' + ''.padEnd(settings.get().streaming.dodge.paddingLength + random - length, 'PAD'));
+        }
 
         if (commonMediaRequest.responseType) {
             xhr.responseType = commonMediaRequest.responseType;
@@ -65,15 +88,9 @@ function XHRLoader() {
                 let value = commonMediaRequest.headers[header];
                 if (value) {
                     xhr.setRequestHeader(header, value);
-                    length += header.length + value.length + 3; // colon, space, newline
                 }
             }
         }
-
-        // Pad headers as needed
-        // Assuming contents not greater than paddingLength, otherwise RangeError
-        let random = Math.random() * settings.get().streaming.dodge.paddingRandomness;
-        xhr.setRequestHeader(settings.get().streaming.dodge.paddingHeader, 'Dodge/' + ''.padEnd(settings.get().streaming.dodge.paddingLength + random - length, 'PAD'));
 
         xhr.withCredentials = commonMediaRequest.credentials === 'include';
         xhr.timeout = commonMediaRequest.timeout;

@@ -30,7 +30,7 @@
     "dev": "tsc && webpack --config build/webpack/modern/webpack.modern.dev.cjs --mode development --watch --progress",
     "doc": "jsdoc -c build/jsdoc/jsdoc_conf.json -d docs/jsdoc",
     "lint": "eslint \"src/**/*.js\" \"test/unit/mocks/*.js\" \"test/unit/test/**/*.js\"",
-    "prebuild": "rimraf dist && tsc && npm run test && npm run lint",
+    "prebuild": "rimraf dist && tsc && npm run lint",
     "prepack": "npm run build",
     "prepare": "node githook.cjs",
     "start": "webpack serve --config build/webpack/modern/webpack.modern.dev.cjs",

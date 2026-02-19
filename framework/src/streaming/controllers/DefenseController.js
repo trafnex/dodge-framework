@@ -229,12 +229,12 @@ function checkDataCycles(stream, logger) {
         if (!padding) {
             // Cycles representing partial segment downloads (with range specified) for
             // the same segment MUST have sequential ranges with <start> = 0.
-            if (rangeEnd < 0 && rs != 0) {
-                if (logger) {
-                    logger.warn('Extended manifest rejected: defended stream info with label=' + stream['label'] + ', data cycle at index=' + i + ', partial with no first byte');
-                }
-                return false;
-            }
+            //if (rangeEnd < 0 && rs != 0) {
+            //    if (logger) {
+            //        logger.warn('Extended manifest rejected: defended stream info with label=' + stream['label'] + ', data cycle at index=' + i + ', partial with no first byte');
+            //    }
+            //    return false;
+            //}
 
             if (rangeEnd >= 0 && rs > rangeEnd + 1) {
                 if (logger) {

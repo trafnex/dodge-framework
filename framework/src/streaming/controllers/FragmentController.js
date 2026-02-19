@@ -154,17 +154,19 @@ function FragmentController(config) {
 
                     rangeStart = parseInt(rangeTokens[0], '10');
                     rangeEnd = parseInt(rangeTokens[1], '10');
-                } else if (piece.request.range) {
+                }
+                
+                if (piece.request.range) {
                     const rangeTokens = piece.request.range.split('-');
 
-                    rangeStart = parseInt(rangeTokens[0], '10');
-                    rangeEnd = parseInt(rangeTokens[1], '10');
+                    let rs = parseInt(rangeTokens[0], '10');
+                    let re = parseInt(rangeTokens[1], '10');
 
-                    if (isNaN(rangeStart)) {
-                        rangeStart = 0;
+                    if (!isNaN(rs)) {
+                        rangeStart = rs;
                     }
-                    if (isNaN(rangeEnd)) {
-                        rangeEnd = rangeStart + piece.response.byteLength - 1;
+                    if (!isNaN(re)) {
+                        rangeEnd = re;
                     }
                 }
 
@@ -188,7 +190,7 @@ function FragmentController(config) {
             const rangeStart = parseInt(rangeTokens[0], '10');
 
             logger.debug('Partial response combination: rangeStart=' + rangeStart + ', byteLength=' + piece.response.byteLength);
-            result.set(piece.response, rangeStart);
+            result.set(piece.response, rangeStart - minRangeStart);
         }
 
         logger.debug('Combined ' + pieces.length + ' partial responses for segment with index ' + index);

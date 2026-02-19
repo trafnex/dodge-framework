@@ -328,12 +328,12 @@ import Events from './events/Events.js';
  *            },
  *            dodge: {
  *                queryParam: 'padding',
- *                paddingHeader: 'hdntl',
+ *                paddingHeader: '',
  *                paddingLength: 512,
  *                paddingRandomness: 256,
  *                checkInterval: 100,
  *                randomnessMax: 50,
- *                maxIdLength: 16
+ *                maxIdLength: 32
  *            }
  *          },
  *          errors: {
@@ -920,7 +920,7 @@ import Events from './events/Events.js';
  * @typedef {Object} DodgeSettings
  * @property {string} [queryParam="padding"]
  * Query parameter to use for cache busting.
- * @property {string} [paddingHeader="hdntl"]
+ * @property {string} [paddingHeader=""]
  * The HTTP header to use for request padding.
  * @property {number} [paddingLength=512]
  * The length, in bytes, all requests should be padded to.
@@ -930,7 +930,7 @@ import Events from './events/Events.js';
  * How often to check if the buffer is done being updated.
  * @property {number} [randomnessMax=50]
  * Maximum random (additional) time to wait to next cycle.
- * @property {number} [maxIdLength=16]
+ * @property {number} [maxIdLength=32]
  * Maximum number of characters in a representation ID.
  */
 
@@ -1389,12 +1389,12 @@ function Settings() {
             },
             dodge: {
                 queryParam: 'padding',
-                paddingHeader: 'hdntl',
+                paddingHeader: '',
                 paddingLength: 512,
                 paddingRandomness: 256,
                 checkInterval: 100,
                 randomnessMax: 50,
-                maxIdLength: 16,
+                maxIdLength: 32,
             }
         },
         errors: {
