@@ -1,5 +1,12 @@
 <img src="dodge-logo.png" width="400">
 
+<p align="left">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://github.com/trafnex/dodge-framework/blob/master/dodge-logo-dark.png">
+  <img src="https://github.com/trafnex/dodge-framework/blob/master/dodge-logo-light.png">
+</picture>
+</p>
+
 ## Overview
 
 This repository contains an implementation of Dodge, a client-side framework for application-layer video fingerprinting defenses. Dodge introduces a generalization of DASH streaming, replacing video segment downloads with customizable *cycles* that are specified in a JSON *extended manifest*. In other words, Dodge supports modification of the request-response sequences of video traffic, enabling different types of traffic analysis defenses that can be provided to the video player as JSON files.
@@ -13,7 +20,9 @@ Our implementation of Dodge is in the `framework` folder. You'll also find Dodge
 
 ## Documentation
 
-See the PoPETS 2026 paper "Dodge: A Client-Side Framework for Application-Layer Video Fingerprinting Defenses" ([link](https://www.ethanwitwer.com/assets/pdf/2026-pets2.pdf)) for further details on the Dodge framework, defense design, and the proof-of-concept defense used for evaluation. If you want to do research or development related to Dodge, feel free to contact us!
+See the PoPETS 2026 paper "Dodge: A Client-Side Framework for Application-Layer Video Fingerprinting Defenses" ([link](https://www.ethanwitwer.com/assets/pdf/2026-pets2.pdf)) for further details on the Dodge framework, defense design, and the proof-of-concept defense used for evaluation.
+
+If you use Dodge in your research, please cite the paper. And if you're interested in or planning to do research or development related to Dodge, feel free to contact us! You can find our contact information in the paper.
 
 To get started with dash.js development in general, check out their [documentation](https://dashif.org/dash.js/) that includes
 a [quickstart guide](https://dashif.org/dash.js/pages/quickstart/index.html), [usage instructions](https://dashif.org/dash.js/pages/usage/index.html),
@@ -47,7 +56,7 @@ A basic example of how to use Dodge in your application can be found below:
 <div>
     <video id="videoPlayer" controls></video>
 </div>
-<script src="https://www.ethanwitwer.com/demos/dodge/dash.all.min.js"></script>
+<script src="./dash.all.min.js"></script>
 <script>
     (function () {
         var url = "./bbb_30fps_constant.exmfst.json";
@@ -71,3 +80,5 @@ Please raise any issue related to dash.js in general directly on their [GitHub i
 dash.js is released under a BSD License; see the [LICENSE file](https://github.com/trafnex/dodge-framework/blob/master/framework/LICENSE.md) in the `framework` folder of this repository.
 
 All contributions, additions, and changes to dash.js (that is, the implementation of Dodge) are available under the BSD 3-Clause License. Defense code (every file in the `defenses` folder) is similarly licensed under the BSD 3-Clause License. See the [LICENSE file](https://github.com/trafnex/dodge-framework/blob/master/LICENSE.md) in the root of the repository for further details.
+
+Dodge is not affiliated with or endorsed by the Dash Industry Forum or dash.js contributors.
