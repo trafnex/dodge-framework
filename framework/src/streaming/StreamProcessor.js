@@ -96,6 +96,11 @@ function StreamProcessor(config) {
         shouldUseExplicitTimeForRequest,
         trackSwitchInProgress;
 
+    function _getRandomWait() {
+        return settings.get().streaming.dodge.checkInterval +
+               Math.round(Math.random() * settings.get().streaming.dodge.randomnessMax);
+    }
+
     function setup() {
         logger = Debug(context).getInstance().getLogger(instance);
         resetInitialSettings();
@@ -257,9 +262,9 @@ function StreamProcessor(config) {
         eventBus.off(Events.INIT_FRAGMENT_NEEDED, _onInitFragmentNeeded, instance);
         eventBus.off(Events.MEDIA_FRAGMENT_NEEDED, _onMediaFragmentNeeded, instance);
         eventBus.off(Events.PADDING_LOADED, _onPaddingLoaded, instance);
-        //eventBus.off(Events.INIT_FRAGMENT_LOADED, _onInitFragmentLoaded, instance);
+        eventBus.off(Events.INIT_FRAGMENT_LOADED, _onInitFragmentLoaded, instance);
         eventBus.off(Events.INIT_FRAGMENT_PARTIAL, _onInitFragmentPartial, instance);
-        //eventBus.off(Events.MEDIA_FRAGMENT_LOADED, _onMediaFragmentLoaded, instance);
+        eventBus.off(Events.MEDIA_FRAGMENT_LOADED, _onMediaFragmentLoaded, instance);
         eventBus.off(Events.MEDIA_FRAGMENT_PARTIAL, _onMediaFragmentPartial, instance);
         eventBus.off(Events.BUFFER_LEVEL_STATE_CHANGED, _onBufferLevelStateChanged, instance);
         eventBus.off(Events.BUFFER_CLEARED, _onBufferCleared, instance);
@@ -1182,9 +1187,7 @@ function StreamProcessor(config) {
      */
     function _onInitFragmentLoaded(e) {
         if (!e.suppress) {
-            let randomWait = settings.get().streaming.dodge.checkInterval;
-            randomWait += Math.round(Math.random() * settings.get().streaming.dodge.randomnessMax);
-            
+            const randomWait = _getRandomWait();
             scheduleController.setCheckPlaybackQuality(false);
             setTimeout(() => {
                 if (pendingSwitchToVoRepresentation && pendingSwitchToVoRepresentation.enabled) {
@@ -1202,9 +1205,7 @@ function StreamProcessor(config) {
 
     function _onInitFragmentPartial(e) {
         if (!e.suppress) {
-            let randomWait = settings.get().streaming.dodge.checkInterval;
-            randomWait += Math.round(Math.random() * settings.get().streaming.dodge.randomnessMax);
-
+            const randomWait = _getRandomWait();
             scheduleController.setCheckPlaybackQuality(false);
             scheduleController.startScheduleTimer(randomWait);
         }
@@ -1218,9 +1219,7 @@ function StreamProcessor(config) {
      */
     function _onMediaFragmentLoaded(e) {
         if (!e.suppress) {
-            let randomWait = settings.get().streaming.dodge.checkInterval;
-            randomWait += Math.round(Math.random() * settings.get().streaming.dodge.randomnessMax);
-            
+            const randomWait = _getRandomWait();
             scheduleController.setCheckPlaybackQuality(true);
             setTimeout(() => {
                 if (pendingSwitchToVoRepresentation && pendingSwitchToVoRepresentation.enabled) {
@@ -1229,7 +1228,6 @@ function StreamProcessor(config) {
                     scheduleController.startScheduleTimer();
                 }
             }, randomWait);
-            //scheduleController.startScheduleTimer(randomWait);
         }
 
         // Always append the duration from the MPD. Otherwise, compensate
@@ -1240,9 +1238,7 @@ function StreamProcessor(config) {
 
     function _onMediaFragmentPartial(e) {
         if (!e.suppress) {
-            let randomWait = settings.get().streaming.dodge.checkInterval;
-            randomWait += Math.round(Math.random() * settings.get().streaming.dodge.randomnessMax);
-
+            const randomWait = _getRandomWait();
             scheduleController.setCheckPlaybackQuality(false);
             scheduleController.startScheduleTimer(randomWait);
         }
@@ -1252,9 +1248,7 @@ function StreamProcessor(config) {
 
     function _onPaddingLoaded(e) {
         if (!e.suppress) {
-            let randomWait = settings.get().streaming.dodge.checkInterval;
-            randomWait += Math.round(Math.random() * settings.get().streaming.dodge.randomnessMax);
-
+            const randomWait = _getRandomWait();
             scheduleController.setCheckPlaybackQuality(e.bufferFlag);
             scheduleController.startScheduleTimer(randomWait);
         }
