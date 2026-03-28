@@ -108,12 +108,14 @@ function checkInitCycles(stream, logger) {
     for (let i = 0; i < stream['init'].length; i++) {
         const range = stream['init'][i].range;
 
-        // The range, if defined, MUST have the syntax <start>-<end>, where one of <start> and
-        // <end> can be omitted. <start> MUST be less than <end> (implicitly or explicitly).
+        // range is optional
         let rs = 0;
         let re = Number.MAX_SAFE_INTEGER;
 
         if (range) {
+            // range MUST be a string of the form "<start>-<end>". Either bound MAY
+            // be omitted (e.g. "-855" or "44-"), in which case it defaults to 0 or
+            // the end of the resource, respectively.
             if (typeof range !== 'string' && !(range instanceof String)) {
                 if (logger) {
                     logger.warn('Extended manifest rejected: defended stream info with label=' + stream['label'] + ', init cycle at index=' + i + ', invalid range');
@@ -122,7 +124,6 @@ function checkInitCycles(stream, logger) {
             }
 
             const rangeTokens = range.split('-');
-            // exactly two numerical byte indices
             if (rangeTokens.length != 2 || isNaN(rangeTokens[0]) || isNaN(rangeTokens[1])) {
                 if (logger) {
                     logger.warn('Extended manifest rejected: defended stream info with label=' + stream['label'] + ', init cycle at index=' + i + ', invalid range');
@@ -137,8 +138,8 @@ function checkInitCycles(stream, logger) {
             if (isNaN(re)) {
                 re = Number.MAX_SAFE_INTEGER;
             }
-            
-            // start cannot be greater than end
+
+            // Range start MUST NOT exceed range end.
             if (rs > re) {
                 if (logger) {
                     logger.warn('Extended manifest rejected: defended stream info with label=' + stream['label'] + ', init cycle at index=' + i + ', invalid range');
@@ -161,16 +162,21 @@ function checkDataCycles(stream, logger) {
         const range = stream['data'][i].range;
         const padding = stream['data'][i].padding;
 
-        // A data cycle MUST contain a valid segment index.
+        // Every data cycle MUST have a non-negative integer segment index.
         if (isNaN(index) || index < 0) {
             if (logger) {
                 logger.warn('Extended manifest rejected: defended stream info with label=' + stream['label'] + ', data cycle at index=' + i + ', invalid index');
             }
             return false;
         }
-
-        // Segments MUST be requested sequentially: no cycle can contain a segment index
-        // less than any previous one. This does not apply to padding cycles.
+        
+        // While a partial sequence is in progress for segment maxIndex (rangeEnd >= 0),
+        // the next non-padding cycle MUST have index >= maxIndex.
+        // 
+        // Once a segment is complete (rangeEnd == -1), the next non-padding cycle MUST
+        // have index > maxIndex; revisiting a completed segment is not allowed.
+        //
+        // Padding cycles may have any index; they have no requirements.
         if (!padding) {
             if (maxIndex >= 0 && ((rangeEnd == -1 && index <= maxIndex) || (rangeEnd >= 0 && index < maxIndex))) {
                 if (logger) {
@@ -187,8 +193,7 @@ function checkDataCycles(stream, logger) {
             maxNoPad = i;
         }
 
-        // The range, if defined, MUST have the syntax <start>-<end>, where one of <start> and
-        // <end> can be omitted. <start> MUST be less than <end> (implicitly or explicitly).
+        // range is optional
         let rs = 0;
         let re = Number.MAX_SAFE_INTEGER;
 
@@ -201,7 +206,6 @@ function checkDataCycles(stream, logger) {
             }
 
             const rangeTokens = range.split('-');
-            // exactly two numerical byte indices
             if (rangeTokens.length != 2 || isNaN(rangeTokens[0]) || isNaN(rangeTokens[1])) {
                 if (logger) {
                     logger.warn('Extended manifest rejected: defended stream info with label=' + stream['label'] + ', data cycle at index=' + i + ', invalid range');
@@ -216,8 +220,8 @@ function checkDataCycles(stream, logger) {
             if (isNaN(re)) {
                 re = Number.MAX_SAFE_INTEGER;
             }
-            
-            // start cannot be greater than end
+
+            // Range start MUST NOT exceed range end.
             if (rs > re) {
                 if (logger) {
                     logger.warn('Extended manifest rejected: defended stream info with label=' + stream['label'] + ', data cycle at index=' + i + ', invalid range');
@@ -227,15 +231,8 @@ function checkDataCycles(stream, logger) {
         }
 
         if (!padding) {
-            // Cycles representing partial segment downloads (with range specified) for
-            // the same segment MUST have sequential ranges with <start> = 0.
-            //if (rangeEnd < 0 && rs != 0) {
-            //    if (logger) {
-            //        logger.warn('Extended manifest rejected: defended stream info with label=' + stream['label'] + ', data cycle at index=' + i + ', partial with no first byte');
-            //    }
-            //    return false;
-            //}
-
+            // When continuing a partial sequence (rangeEnd >= 0), the start of the new
+            // range MUST NOT skip bytes. Overlap (rs <= rangeEnd) is permitted.
             if (rangeEnd >= 0 && rs > rangeEnd + 1) {
                 if (logger) {
                     logger.warn('Extended manifest rejected: defended stream info with label=' + stream['label'] + ', data cycle at index=' + i + ', partial with non-sequential range ' + rs + '-' + re + ' (segment ' + index + ') rangeEnd=' + rangeEnd);
@@ -243,7 +240,9 @@ function checkDataCycles(stream, logger) {
                 return false;
             }
 
-            rangeEnd = re;
+            // A cycle without a range is a full download; it completes the segment.
+            // A cycle with a range leaves the segment open for further cycles.
+            rangeEnd = range ? re : -1;
         }
     }
 
@@ -321,16 +320,14 @@ function isValidExtendedManifest(manifest, logger) {
         }
 
         // [check init cycles]
-        //if (!checkInitCycles(stream, logger)) {
-        //    return false;
-        //}
-        checkInitCycles(stream, logger);
+        if (!checkInitCycles(stream, logger)) {
+            return false;
+        }
 
         // [check data cycles]
-        //if (!checkDataCycles(stream, logger)) {
-        //    return false;
-        //}
-        checkDataCycles(stream, logger);
+        if (!checkDataCycles(stream, logger)) {
+            return false;
+        }
     }
 
     return true;
