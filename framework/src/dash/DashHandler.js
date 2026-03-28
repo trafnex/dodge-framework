@@ -439,6 +439,10 @@ function DashHandler(config) {
      * @return {number}
      */
     function getValidTimeAheadOfTargetTime(time, mediaInfo, representation, targetThreshold) {
+        // Save cycle state — the getSegmentRequestForTime calls below are exploratory
+        // and must not permanently advance lastCycleIndex/lastSegment.
+        const savedCycleIndex = lastCycleIndex;
+        const savedSegment = lastSegment;
         try {
 
             if (isNaN(time) || !mediaInfo || !representation) {
@@ -501,9 +505,11 @@ function DashHandler(config) {
 
             return adjustedTime;
 
-
         } catch (e) {
             return NaN;
+        } finally {
+            lastCycleIndex = savedCycleIndex;
+            lastSegment = savedSegment;
         }
     }
 
