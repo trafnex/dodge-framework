@@ -129,8 +129,8 @@ function checkInitCycles(stream, logger) {
                 }
                 return false;
             }
-            rs = parseInt(rangeTokens[0], '10');
-            re = parseInt(rangeTokens[1], '10');
+            rs = parseInt(rangeTokens[0], 10);
+            re = parseInt(rangeTokens[1], 10);
             if (isNaN(rs)) {
                 rs = 0;
             }
@@ -208,8 +208,8 @@ function checkDataCycles(stream, logger) {
                 }
                 return false;
             }
-            rs = parseInt(rangeTokens[0], '10');
-            re = parseInt(rangeTokens[1], '10');
+            rs = parseInt(rangeTokens[0], 10);
+            re = parseInt(rangeTokens[1], 10);
             if (isNaN(rs)) {
                 rs = 0;
             }

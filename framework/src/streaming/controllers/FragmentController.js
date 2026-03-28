@@ -199,7 +199,7 @@ function FragmentController(config) {
         for (let i = 0; i < pieces.length; i++) {
             const piece = pieces[i];
             const rangeTokens = piece.request.range ? piece.request.range.split('-') : ['0'];
-            const rangeStart = parseInt(rangeTokens[0], '10');
+            const rangeStart = parseInt(rangeTokens[0], 10);
 
             logger.debug('Partial response combination: rangeStart=' + rangeStart + ', byteLength=' + piece.response.byteLength);
             result.set(piece.response, rangeStart - minRangeStart);
