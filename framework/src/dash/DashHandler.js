@@ -179,7 +179,7 @@ function DashHandler(config) {
 
 
     function getInitRequest(mediaInfo, representation) {
-        if (!representation) {
+        if (!representation || !defendedStreamInfo) {
             return null;
         }
 
@@ -326,7 +326,7 @@ function DashHandler(config) {
         }
         let request = null;
 
-        if (!representation || !representation.segmentInfoType) {
+        if (!representation || !representation.segmentInfoType || !defendedStreamInfo) {
             return request;
         }
 
@@ -343,7 +343,7 @@ function DashHandler(config) {
         // construct a request based on that cycle's fields
         const cycleIndex = defenseController.getCycleIndexBySegmentIndex(defendedStreamInfo, segment.index);
         const cycle = defendedStreamInfo['data'][cycleIndex];
-        if (!segment) {
+        if (!cycle) {
             return null;
         }
         logger.debug('cycle ' + cycleIndex + '/' + defendedStreamInfo['data'].length);
@@ -379,7 +379,7 @@ function DashHandler(config) {
     function getNextSegmentRequest(mediaInfo, representation) {
         let request = null;
 
-        if (!representation || !representation.segmentInfoType) {
+        if (!representation || !representation.segmentInfoType || !defendedStreamInfo) {
             return request;
         }
 
