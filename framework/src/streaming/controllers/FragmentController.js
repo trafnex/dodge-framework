@@ -147,20 +147,26 @@ function FragmentController(config) {
 
             if ((index == piece.request.index || (isNaN(index) && isNaN(piece.request.index))) && mediaType == piece.request.mediaType && representationId == piece.request.representation.id) {
                 let rangeStart = 0;
-                let rangeEnd = piece.response.byteLength - 1;
+                let rangeEnd = -1; // sentinel; will be resolved to an absolute byte position below
 
                 if (piece.request.originalRange) {
                     const rangeTokens = piece.request.originalRange.split('-');
 
-                    rangeStart = parseInt(rangeTokens[0], '10');
-                    rangeEnd = parseInt(rangeTokens[1], '10');
+                    const ors = parseInt(rangeTokens[0], 10);
+                    const ore = parseInt(rangeTokens[1], 10);
+                    if (!isNaN(ors)) {
+                        rangeStart = ors;
+                    }
+                    if (!isNaN(ore)) {
+                        rangeEnd = ore;
+                    }
                 }
-                
+
                 if (piece.request.range) {
                     const rangeTokens = piece.request.range.split('-');
 
-                    let rs = parseInt(rangeTokens[0], '10');
-                    let re = parseInt(rangeTokens[1], '10');
+                    let rs = parseInt(rangeTokens[0], 10);
+                    let re = parseInt(rangeTokens[1], 10);
 
                     if (!isNaN(rs)) {
                         rangeStart = rs;
@@ -168,6 +174,12 @@ function FragmentController(config) {
                     if (!isNaN(re)) {
                         rangeEnd = re;
                     }
+                }
+
+                // If no explicit end byte was provided (e.g. open-ended range "44000-"),
+                // derive the absolute end position from the start and the actual response size.
+                if (rangeEnd < 0) {
+                    rangeEnd = rangeStart + piece.response.byteLength - 1;
                 }
 
                 minRangeStart = Math.min(minRangeStart, rangeStart);
