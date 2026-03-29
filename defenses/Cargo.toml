@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 license = "BSD-3-Clause"
 authors = ["Ethan Witwer <ethan@ethanwitwer.com>"]
-repository = "https://github.com/trafnex/dodge-defenses"
+repository = "https://github.com/trafnex/dodge-framework"
 description = "Defenses for the Dodge framework"
 
 [dependencies]
