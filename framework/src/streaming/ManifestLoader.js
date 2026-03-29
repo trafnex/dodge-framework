@@ -200,7 +200,11 @@ function ManifestLoader(config) {
                 if (manifest) {
                     // URL from which the MPD was originally retrieved (MPD updates will not change this value)
                     if (!manifest.url) {
-                        const newUrl = `${baseUri}static.mpd`; // TODO production
+                        // manifest.url is used for MPD update polling. dash.js only schedules
+                        // a refresh when manifest.type === 'dynamic' (live streams); the MPD
+                        // embedded in an extended manifest is always static, so this URL is
+                        // never re-fetched after initial load.
+                        const newUrl = `${baseUri}static.mpd`;
                         logger.debug('Setting manifest URL to ' + newUrl);
                         manifest.url = newUrl;
                     } else {

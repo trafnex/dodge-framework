@@ -201,6 +201,9 @@ function DashHandler(config) {
 
         const initIndex = lastInitIndex + 1;
         const cycle = defendedStreamInfo['init'][initIndex];
+        if (!cycle) {
+            return null;
+        }
 
         lastInitIndex = initIndex;
         
@@ -442,6 +445,9 @@ function DashHandler(config) {
     }
 
     function repeatSegmentRequest(mediaInfo, representation) {
+        if (!lastSegment) {
+            return null;
+        }
         return getSegmentRequestForTime(mediaInfo, representation, lastSegment.presentationStartTime);
     }
 
@@ -533,7 +539,7 @@ function DashHandler(config) {
         return lastSegment ? lastSegment.index : -1;
     }
 
-    // Which index may come next? 0 if no defended stream info.
+    // Which segment index comes next? -1 if no defended stream info or no more cycles.
     function getNextExpectedIndex() {
         const cycleIndex = lastCycleIndex + 1;
         const cycle = defendedStreamInfo ? defendedStreamInfo['data'][cycleIndex] : null;
@@ -542,7 +548,7 @@ function DashHandler(config) {
             return cycle.index;
         }
 
-        return 0;
+        return -1;
     }
 
     // How many init cycles are remaining? -1 if no defended stream info.
@@ -574,14 +580,12 @@ function DashHandler(config) {
 
     // Do we have cycles remaining after all playable video content?
     function getIsTrailing() {
-        let trailing = defendedStreamInfo && lastCycleIndex >= defendedStreamInfo['maxNoPad'] && lastCycleIndex < defendedStreamInfo['data'].length - 1;
-        logger.debug('getIsTrailing() = ' + trailing);
-        return trailing;
+        return defendedStreamInfo && lastCycleIndex >= defendedStreamInfo['maxNoPad'] && lastCycleIndex < defendedStreamInfo['data'].length - 1;
     }
 
     function _onDynamicToStatic() {
         logger.debug('Dynamic stream complete');
-        //mediaHasFinished = true;
+        // Dodge wraps static VoD content; dynamic-to-static transitions are not supported.
     }
 
     instance = {

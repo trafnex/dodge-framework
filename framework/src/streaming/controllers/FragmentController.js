@@ -184,7 +184,7 @@ function FragmentController(config) {
 
                 minRangeStart = Math.min(minRangeStart, rangeStart);
                 maxRangeEnd = Math.max(maxRangeEnd, rangeEnd);
-                pieces.push(piece);
+                pieces.push({ piece, rangeStart });
 
                 partialSegments.splice(i, 1);
             }
@@ -197,9 +197,7 @@ function FragmentController(config) {
         let result = new Uint8Array(totalSize);
 
         for (let i = 0; i < pieces.length; i++) {
-            const piece = pieces[i];
-            const rangeTokens = piece.request.range ? piece.request.range.split('-') : ['0'];
-            const rangeStart = parseInt(rangeTokens[0], 10);
+            const { piece, rangeStart } = pieces[i];
 
             logger.debug('Partial response combination: rangeStart=' + rangeStart + ', byteLength=' + piece.response.byteLength);
             result.set(piece.response, rangeStart - minRangeStart);
