@@ -143,7 +143,19 @@ function ManifestLoader(config) {
                 }
 
                 // Parse and validate the received extended manifest, extract the MPD
-                const extended = JSON.parse(bytes);
+                let extended;
+                try {
+                    extended = JSON.parse(bytes);
+                } catch (e) {
+                    eventBus.trigger(Events.INTERNAL_MANIFEST_LOADED, {
+                        manifest: null,
+                        error: new DashJSError(
+                            Errors.MANIFEST_LOADER_PARSING_FAILURE_ERROR_CODE,
+                            Errors.MANIFEST_LOADER_PARSING_FAILURE_ERROR_MESSAGE + `${url}`
+                        )
+                    });
+                    return;
+                }
                 if (!defenseController.addExtendedManifest(extended)) {
                     logger.debug('Failed to download extended manifest, rejected');
                     return;
