@@ -135,27 +135,43 @@ function DashHandler(config) {
                 if (replacements['Number'] > 0) {
                     let count = replacements['Number'];
                     let chars = request.replacementNumber.toString().length;
-
-                    random += '0'.repeat(count * (max - chars));
+                    let pad = max - chars;
+                    if (pad > 0) {
+                        random += '0'.repeat(count * pad);
+                    } else if (pad < 0) {
+                        logger.warn('set request URL: replacement number ' + request.replacementNumber + ' exceeds max length ' + max);
+                    }
                 }
                 if (replacements['Time'] > 0) {
                     let count = replacements['Time'];
                     let chars = request.replacementTime.toString().length;
-
-                    random += '0'.repeat(count * (max - chars));
+                    let pad = max - chars;
+                    if (pad > 0) {
+                        random += '0'.repeat(count * pad);
+                    } else if (pad < 0) {
+                        logger.warn('set request URL: replacement time ' + request.replacementTime + ' exceeds max length ' + max);
+                    }
                 }
                 if (replacements['Bandwidth'] > 0) {
                     let count = replacements['Bandwidth'];
                     let chars = request.representation.bandwidth.toString().length;
-
-                    random += '0'.repeat(count * (max - chars));
+                    let pad = max - chars;
+                    if (pad > 0) {
+                        random += '0'.repeat(count * pad);
+                    } else if (pad < 0) {
+                        logger.warn('set request URL: bandwidth ' + request.representation.bandwidth + ' exceeds max length ' + max);
+                    }
                 }
                 if (replacements['ID'] > 0) {
                     let count = replacements['ID'];
                     let chars = request.representation.id.toString().length;
                     max = settings.get().streaming.dodge.maxIdLength;
-
-                    random += '0'.repeat(count * (max - chars));
+                    let pad = max - chars;
+                    if (pad > 0) {
+                        random += '0'.repeat(count * pad);
+                    } else if (pad < 0) {
+                        logger.warn('set request URL: representation ID "' + request.representation.id + '" exceeds maxIdLength ' + max);
+                    }
                 }
             }
 
