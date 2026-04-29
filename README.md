@@ -6,6 +6,8 @@
 </picture>
 </p>
 
+**NOTE:** This repository has been archived. Dodge has been re-implemented as a standalone, opt-in module - with production-ready improvements and new features - that is planned for inclusion in dash.js v5.3.0. See [PR #5021](https://github.com/Dash-Industry-Forum/dash.js/pull/5021).
+
 ## Overview
 
 This repository contains an implementation of Dodge, a client-side framework for application-layer video fingerprinting defenses. Dodge introduces a generalization of DASH streaming, replacing video segment downloads with customizable *cycles* that are specified in a JSON *extended manifest*. In this way, Dodge provides full control over the request-response sequences of video traffic, enabling different types of traffic analysis defenses that can be provided to the video player as JSON files.
