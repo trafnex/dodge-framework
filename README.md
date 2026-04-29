@@ -6,7 +6,7 @@
 </picture>
 </p>
 
-**NOTE:** This repository has been archived. Dodge has been re-implemented as a standalone, opt-in module - with production-ready improvements and new features - that is planned for inclusion in dash.js v5.3.0. See [PR #5021](https://github.com/Dash-Industry-Forum/dash.js/pull/5021).
+**NOTE:** This repository has been archived. Dodge has been re-implemented as a standalone, opt-in module - with production-ready improvements and a few new features - that is planned for inclusion in dash.js v5.3.0. It has also been licensed to the DASH Industry Forum (transfer document [here](https://groups.google.com/g/dashjs/c/E5anNvjRRrA)). See [PR #5021](https://github.com/Dash-Industry-Forum/dash.js/pull/5021).
 
 ## Overview
 
